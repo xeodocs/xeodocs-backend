@@ -24,7 +24,7 @@ CREATE TABLE IF NOT EXISTS users (
 -- Note: Change this password after first login
 INSERT INTO users (username, password, role_id, created_at) VALUES (
     'admin',
-    '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', -- bcrypt hash for 'tempadmin123'
+    '$2a$10$EyXgHjDjZdGXkdQzI5atluZiAOkLncOyFMf0ftHaY/8kDvY0iCrpS', -- bcrypt hash for 'tempadmin123'
     1, -- admin role id
     CURRENT_TIMESTAMP
 ) ON CONFLICT (username) DO NOTHING;
