@@ -32,7 +32,7 @@ func JWTMiddleware(cfg *config.Config, requiredRole string) func(http.HandlerFun
 				return
 			}
 
-			if requiredRole != "" && claims.Role != requiredRole {
+			if requiredRole != "" && claims.RoleID != 1 {
 				http.Error(w, "Insufficient permissions", http.StatusForbidden)
 				return
 			}
@@ -63,7 +63,7 @@ func RegisterHandler(cfg *config.Config) http.HandlerFunc {
 			return
 		}
 
-		token, err := auth.GenerateJWT(user.ID, user.Username, user.Role, cfg)
+		token, err := auth.GenerateJWT(user.ID, user.Username, user.RoleID, cfg)
 		if err != nil {
 			log.Println("Error generating token:", err)
 			http.Error(w, "Internal server error", http.StatusInternalServerError)
@@ -99,7 +99,7 @@ func LoginHandler(cfg *config.Config) http.HandlerFunc {
 			return
 		}
 
-		token, err := auth.GenerateJWT(user.ID, user.Username, user.Role, cfg)
+		token, err := auth.GenerateJWT(user.ID, user.Username, user.RoleID, cfg)
 		if err != nil {
 			log.Println("Error generating token:", err)
 			http.Error(w, "Internal server error", http.StatusInternalServerError)

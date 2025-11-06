@@ -13,7 +13,8 @@ type User struct {
 	ID        int       `json:"id"`
 	Username  string    `json:"username"`
 	Password  string    `json:"-"`
-	Role      string    `json:"role"`
+	RoleID    int       `json:"role_id"`
+	Role      string    `json:"role"` // populated from join
 	CreatedAt time.Time `json:"created_at"`
 }
 
@@ -55,35 +56,44 @@ func (u *User) CheckPassword(password string) bool {
 }
 
 func CreateUser(req RegisterRequest) (*User, error) {
-	if req.Role == "" {
-		req.Role = "viewer" // default role
+	roleID := 3 // default viewer
+	if req.Role != "" {
+		role, err := GetRoleByName(req.Role)
+		if err != nil {
+			return nil, err
+		}
+		roleID = role.ID
 	}
 
 	user := &User{
 		Username: req.Username,
 		Password: req.Password,
-		Role:     req.Role,
+		RoleID:   roleID,
 	}
 
 	if err := user.HashPassword(); err != nil {
 		return nil, err
 	}
 
-	query := `INSERT INTO users (username, password, role, created_at) VALUES ($1, $2, $3, $4) RETURNING id`
-	err := db.DB.QueryRow(query, user.Username, user.Password, user.Role, time.Now()).Scan(&user.ID)
+	query := `INSERT INTO users (username, password, role_id, created_at) VALUES ($1, $2, $3, $4) RETURNING id`
+	err := db.DB.QueryRow(query, user.Username, user.Password, user.RoleID, time.Now()).Scan(&user.ID)
 	if err != nil {
 		return nil, err
 	}
 
 	user.CreatedAt = time.Now()
+	// Populate Role name
+	if role, err := GetRoleByID(user.RoleID); err == nil {
+		user.Role = role.Name
+	}
 	return user, nil
 }
 
 func GetUserByUsername(username string) (*User, error) {
 	user := &User{}
-	query := `SELECT id, username, password, role, created_at FROM users WHERE username = $1`
+	query := `SELECT u.id, u.username, u.password, u.role_id, r.name, u.created_at FROM users u JOIN roles r ON u.role_id = r.id WHERE u.username = $1`
 	row := db.DB.QueryRow(query, username)
-	err := row.Scan(&user.ID, &user.Username, &user.Password, &user.Role, &user.CreatedAt)
+	err := row.Scan(&user.ID, &user.Username, &user.Password, &user.RoleID, &user.Role, &user.CreatedAt)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, errors.New("user not found")
@@ -96,7 +106,7 @@ func GetUserByUsername(username string) (*User, error) {
 // User CRUD functions
 
 func GetUsers() ([]User, error) {
-	query := `SELECT id, username, role, created_at FROM users`
+	query := `SELECT u.id, u.username, u.role_id, r.name, u.created_at FROM users u JOIN roles r ON u.role_id = r.id`
 	rows, err := db.DB.Query(query)
 	if err != nil {
 		return nil, err
@@ -106,7 +116,7 @@ func GetUsers() ([]User, error) {
 	var users []User
 	for rows.Next() {
 		var u User
-		err := rows.Scan(&u.ID, &u.Username, &u.Role, &u.CreatedAt)
+		err := rows.Scan(&u.ID, &u.Username, &u.RoleID, &u.Role, &u.CreatedAt)
 		if err != nil {
 			return nil, err
 		}
@@ -117,9 +127,9 @@ func GetUsers() ([]User, error) {
 
 func GetUserByID(id int) (*User, error) {
 	user := &User{}
-	query := `SELECT id, username, role, created_at FROM users WHERE id = $1`
+	query := `SELECT u.id, u.username, u.role_id, r.name, u.created_at FROM users u JOIN roles r ON u.role_id = r.id WHERE u.id = $1`
 	row := db.DB.QueryRow(query, id)
-	err := row.Scan(&user.ID, &user.Username, &user.Role, &user.CreatedAt)
+	err := row.Scan(&user.ID, &user.Username, &user.RoleID, &user.Role, &user.CreatedAt)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, errors.New("user not found")
@@ -133,7 +143,15 @@ func UpdateUser(id int, req RegisterRequest) (*User, error) {
 	user := &User{
 		ID:       id,
 		Username: req.Username,
-		Role:     req.Role,
+	}
+
+	if req.Role != "" {
+		role, err := GetRoleByName(req.Role)
+		if err != nil {
+			return nil, err
+		}
+		user.RoleID = role.ID
+		user.Role = role.Name
 	}
 
 	if req.Password != "" {
@@ -141,14 +159,20 @@ func UpdateUser(id int, req RegisterRequest) (*User, error) {
 		if err := user.HashPassword(); err != nil {
 			return nil, err
 		}
-		query := `UPDATE users SET username = $1, password = $2, role = $3 WHERE id = $4`
-		_, err := db.DB.Exec(query, user.Username, user.Password, user.Role, id)
+		query := `UPDATE users SET username = $1, password = $2, role_id = $3 WHERE id = $4`
+		_, err := db.DB.Exec(query, user.Username, user.Password, user.RoleID, id)
+		if err != nil {
+			return nil, err
+		}
+	} else if req.Role != "" {
+		query := `UPDATE users SET username = $1, role_id = $2 WHERE id = $3`
+		_, err := db.DB.Exec(query, user.Username, user.RoleID, id)
 		if err != nil {
 			return nil, err
 		}
 	} else {
-		query := `UPDATE users SET username = $1, role = $2 WHERE id = $3`
-		_, err := db.DB.Exec(query, user.Username, user.Role, id)
+		query := `UPDATE users SET username = $1 WHERE id = $2`
+		_, err := db.DB.Exec(query, user.Username, id)
 		if err != nil {
 			return nil, err
 		}
@@ -205,6 +229,20 @@ func GetRoleByID(id int) (*Role, error) {
 	role := &Role{}
 	query := `SELECT id, name, description, created_at FROM roles WHERE id = $1`
 	row := db.DB.QueryRow(query, id)
+	err := row.Scan(&role.ID, &role.Name, &role.Description, &role.CreatedAt)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, errors.New("role not found")
+		}
+		return nil, err
+	}
+	return role, nil
+}
+
+func GetRoleByName(name string) (*Role, error) {
+	role := &Role{}
+	query := `SELECT id, name, description, created_at FROM roles WHERE name = $1`
+	row := db.DB.QueryRow(query, name)
 	err := row.Scan(&role.ID, &role.Name, &role.Description, &role.CreatedAt)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
