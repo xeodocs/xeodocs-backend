@@ -17,8 +17,9 @@ XeoDocs automatically translates documentation from English to other languages u
 ## Setup
 
 1. Clone the repository
-2. Run `docker compose -f docker-compose.dev.yml up` for development
+2. Run `docker compose -f docker-compose.dev.yml up --build` for development
 3. For production, use `docker-compose.prod.yml`
+4. Stop the containers with `docker compose -f docker-compose.dev.yml down --volumes --rmi local`
 
 ## Services
 
