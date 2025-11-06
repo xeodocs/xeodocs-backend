@@ -1,7 +1,19 @@
 package main
 
-import "fmt"
+import (
+	"log"
+	"net/http"
+
+	"github.com/xeodocs/xeodocs-backend/internal/gateway"
+	"github.com/xeodocs/xeodocs-backend/internal/shared/config"
+)
 
 func main() {
-	fmt.Println("Starting Gateway Service")
+	cfg := config.Load()
+
+	mux := http.NewServeMux()
+	mux.HandleFunc("/v1/auth/", gateway.AuthProxyHandler(cfg))
+
+	log.Printf("Starting Gateway Service on port %s", cfg.GatewayPort)
+	log.Fatal(http.ListenAndServe(":"+cfg.GatewayPort, mux))
 }
