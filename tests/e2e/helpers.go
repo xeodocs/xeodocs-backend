@@ -73,7 +73,7 @@ func (c *TestClient) AssertSuccess(t *testing.T, resp *http.Response) {
 }
 
 func (c *TestClient) AssertCreated(t *testing.T, resp *http.Response) {
-	require.Equal(t, http.StatusOK, resp.StatusCode) // Note: handlers return 200, not 201
+	require.Equal(t, http.StatusCreated, resp.StatusCode)
 }
 
 func (c *TestClient) AssertNoContent(t *testing.T, resp *http.Response) {

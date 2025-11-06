@@ -18,7 +18,16 @@ func main() {
 	mux := http.NewServeMux()
 
 	// Projects CRUD - protected
-	mux.HandleFunc("/projects", auth.JWTMiddleware(cfg, "")(project.CreateProjectHandler(cfg)))
+	mux.HandleFunc("/projects", func(w http.ResponseWriter, r *http.Request) {
+		switch r.Method {
+		case http.MethodGet:
+			auth.JWTMiddleware(cfg, "")(project.ListProjectsHandler(cfg))(w, r)
+		case http.MethodPost:
+			auth.JWTMiddleware(cfg, "")(project.CreateProjectHandler(cfg))(w, r)
+		default:
+			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		}
+	})
 	mux.HandleFunc("/projects/", func(w http.ResponseWriter, r *http.Request) {
 		path := r.URL.Path
 		if len(path) > 10 && path[:10] == "/projects/" {
@@ -38,12 +47,7 @@ func main() {
 				http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 			}
 		} else {
-			switch r.Method {
-			case http.MethodGet:
-				auth.JWTMiddleware(cfg, "")(project.ListProjectsHandler(cfg))(w, r)
-			default:
-				http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-			}
+			http.NotFound(w, r)
 		}
 	})
 

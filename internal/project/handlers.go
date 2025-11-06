@@ -25,6 +25,16 @@ func CreateProjectHandler(cfg *config.Config) http.HandlerFunc {
 			return
 		}
 
+		// Validate required fields
+		if req.Name == "" {
+			http.Error(w, "name is required", http.StatusBadRequest)
+			return
+		}
+		if req.RepoURL == "" {
+			http.Error(w, "repo_url is required", http.StatusBadRequest)
+			return
+		}
+
 		project, err := CreateProject(claims.UserID, req)
 		if err != nil {
 			log.Println("Error creating project:", err)
