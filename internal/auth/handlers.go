@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
+	"strconv"
 
 	"github.com/xeodocs/xeodocs-backend/internal/shared/auth"
 	"github.com/xeodocs/xeodocs-backend/internal/shared/config"
@@ -74,5 +75,246 @@ func LoginHandler(cfg *config.Config) http.HandlerFunc {
 
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(map[string]string{"token": token})
+	}
+}
+
+// User CRUD handlers
+
+func ListUsersHandler(cfg *config.Config) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+
+		users, err := GetUsers()
+		if err != nil {
+			log.Println("Error getting users:", err)
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
+			return
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(users)
+	}
+}
+
+func GetUserHandler(cfg *config.Config) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+
+		idStr := r.URL.Path[len("/users/"):]
+		id, err := strconv.Atoi(idStr)
+		if err != nil {
+			http.Error(w, "Invalid user ID", http.StatusBadRequest)
+			return
+		}
+
+		user, err := GetUserByID(id)
+		if err != nil {
+			if err.Error() == "user not found" {
+				http.Error(w, "User not found", http.StatusNotFound)
+			} else {
+				log.Println("Error getting user:", err)
+				http.Error(w, "Internal server error", http.StatusInternalServerError)
+			}
+			return
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(user)
+	}
+}
+
+func UpdateUserHandler(cfg *config.Config) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPut {
+			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+
+		idStr := r.URL.Path[len("/users/"):]
+		id, err := strconv.Atoi(idStr)
+		if err != nil {
+			http.Error(w, "Invalid user ID", http.StatusBadRequest)
+			return
+		}
+
+		var req RegisterRequest
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			http.Error(w, "Invalid request", http.StatusBadRequest)
+			return
+		}
+
+		user, err := UpdateUser(id, req)
+		if err != nil {
+			log.Println("Error updating user:", err)
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
+			return
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(user)
+	}
+}
+
+func DeleteUserHandler(cfg *config.Config) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodDelete {
+			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+
+		idStr := r.URL.Path[len("/users/"):]
+		id, err := strconv.Atoi(idStr)
+		if err != nil {
+			http.Error(w, "Invalid user ID", http.StatusBadRequest)
+			return
+		}
+
+		err = DeleteUser(id)
+		if err != nil {
+			log.Println("Error deleting user:", err)
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
+			return
+		}
+
+		w.WriteHeader(http.StatusNoContent)
+	}
+}
+
+// Role CRUD handlers
+
+func CreateRoleHandler(cfg *config.Config) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+
+		var req RoleRequest
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			http.Error(w, "Invalid request", http.StatusBadRequest)
+			return
+		}
+
+		role, err := CreateRole(req)
+		if err != nil {
+			log.Println("Error creating role:", err)
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
+			return
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(role)
+	}
+}
+
+func ListRolesHandler(cfg *config.Config) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+
+		roles, err := GetRoles()
+		if err != nil {
+			log.Println("Error getting roles:", err)
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
+			return
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(roles)
+	}
+}
+
+func GetRoleHandler(cfg *config.Config) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+
+		idStr := r.URL.Path[len("/roles/"):]
+		id, err := strconv.Atoi(idStr)
+		if err != nil {
+			http.Error(w, "Invalid role ID", http.StatusBadRequest)
+			return
+		}
+
+		role, err := GetRoleByID(id)
+		if err != nil {
+			if err.Error() == "role not found" {
+				http.Error(w, "Role not found", http.StatusNotFound)
+			} else {
+				log.Println("Error getting role:", err)
+				http.Error(w, "Internal server error", http.StatusInternalServerError)
+			}
+			return
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(role)
+	}
+}
+
+func UpdateRoleHandler(cfg *config.Config) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPut {
+			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+
+		idStr := r.URL.Path[len("/roles/"):]
+		id, err := strconv.Atoi(idStr)
+		if err != nil {
+			http.Error(w, "Invalid role ID", http.StatusBadRequest)
+			return
+		}
+
+		var req RoleRequest
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			http.Error(w, "Invalid request", http.StatusBadRequest)
+			return
+		}
+
+		role, err := UpdateRole(id, req)
+		if err != nil {
+			log.Println("Error updating role:", err)
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
+			return
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(role)
+	}
+}
+
+func DeleteRoleHandler(cfg *config.Config) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodDelete {
+			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+
+		idStr := r.URL.Path[len("/roles/"):]
+		id, err := strconv.Atoi(idStr)
+		if err != nil {
+			http.Error(w, "Invalid role ID", http.StatusBadRequest)
+			return
+		}
+
+		err = DeleteRole(id)
+		if err != nil {
+			log.Println("Error deleting role:", err)
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
+			return
+		}
+
+		w.WriteHeader(http.StatusNoContent)
 	}
 }
