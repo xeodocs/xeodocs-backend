@@ -17,6 +17,8 @@ func main() {
 	mux.HandleFunc("/v1/users/", gateway.AuthProxyHandler(cfg))
 	mux.HandleFunc("/v1/roles", gateway.AuthProxyHandler(cfg))
 	mux.HandleFunc("/v1/roles/", gateway.AuthProxyHandler(cfg))
+	mux.HandleFunc("/v1/projects", gateway.ProjectProxyHandler(cfg))
+	mux.HandleFunc("/v1/projects/", gateway.ProjectProxyHandler(cfg))
 
 	log.Printf("Starting Gateway Service on port %s", cfg.GatewayPort)
 	log.Fatal(http.ListenAndServe(":"+cfg.GatewayPort, mux))

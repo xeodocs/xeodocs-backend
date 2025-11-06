@@ -250,3 +250,120 @@ curl -X DELETE http://localhost:8080/v1/roles/4 \
 ```
 
 Response: 204 No Content
+
+## Create Project
+
+Create a new project. Requires authentication.
+
+```bash
+curl -X POST http://localhost:8080/v1/projects \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "My Documentation Project",
+    "repo_url": "https://github.com/example/docs",
+    "languages": ["en", "es", "fr"],
+    "build_commands": ["npm install", "npm run build"]
+  }'
+```
+
+Response:
+```json
+{
+  "id": 1,
+  "user_id": 1,
+  "name": "My Documentation Project",
+  "repo_url": "https://github.com/example/docs",
+  "languages": ["en", "es", "fr"],
+  "build_commands": ["npm install", "npm run build"],
+  "created_at": "2023-01-01T00:00:00Z",
+  "updated_at": "2023-01-01T00:00:00Z"
+}
+```
+
+## List Projects
+
+Get a list of all your projects. Requires authentication.
+
+```bash
+curl -X GET http://localhost:8080/v1/projects \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+```
+
+Response:
+```json
+[
+  {
+    "id": 1,
+    "user_id": 1,
+    "name": "My Documentation Project",
+    "repo_url": "https://github.com/example/docs",
+    "languages": ["en", "es", "fr"],
+    "build_commands": ["npm install", "npm run build"],
+    "created_at": "2023-01-01T00:00:00Z",
+    "updated_at": "2023-01-01T00:00:00Z"
+  }
+]
+```
+
+## Get Project
+
+Get a specific project by ID. Requires authentication.
+
+```bash
+curl -X GET http://localhost:8080/v1/projects/1 \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+```
+
+Response:
+```json
+{
+  "id": 1,
+  "user_id": 1,
+  "name": "My Documentation Project",
+  "repo_url": "https://github.com/example/docs",
+  "languages": ["en", "es", "fr"],
+  "build_commands": ["npm install", "npm run build"],
+  "created_at": "2023-01-01T00:00:00Z",
+  "updated_at": "2023-01-01T00:00:00Z"
+}
+```
+
+## Update Project
+
+Update a project's information. Requires authentication. Only provided fields will be updated.
+
+```bash
+curl -X PUT http://localhost:8080/v1/projects/1 \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Updated Project Name",
+    "languages": ["en", "es", "fr", "de"]
+  }'
+```
+
+Response:
+```json
+{
+  "id": 1,
+  "user_id": 1,
+  "name": "Updated Project Name",
+  "repo_url": "https://github.com/example/docs",
+  "languages": ["en", "es", "fr", "de"],
+  "build_commands": ["npm install", "npm run build"],
+  "created_at": "2023-01-01T00:00:00Z",
+  "updated_at": "2023-01-01T00:00:00Z"
+}
+```
+
+## Delete Project
+
+Delete a project by ID. Requires authentication.
+
+```bash
+curl -X DELETE http://localhost:8080/v1/projects/1 \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+```
+
+Response: 204 No Content
