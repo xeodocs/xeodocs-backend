@@ -4,10 +4,16 @@ The gateway proxies requests to the auth service. All auth endpoints are prefixe
 
 ## Register User
 
-Create a new user account. The role is optional and defaults to "viewer".
+Create a new user account. Requires admin authentication. The role is optional and defaults to "viewer".
+
+**Default Admin User:**  
+Username: `admin`  
+Password: `tempadmin123`  
+*Change this password after first login!*
 
 ```bash
 curl -X POST http://localhost:8080/v1/auth/register \
+  -H "Authorization: Bearer YOUR_ADMIN_JWT_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
     "username": "testuser",
@@ -45,11 +51,11 @@ Response:
 
 ## List Users
 
-Get a list of all users.
+Get a list of all users. Requires admin authentication.
 
 ```bash
 curl -X GET http://localhost:8080/v1/users \
-  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+  -H "Authorization: Bearer YOUR_ADMIN_JWT_TOKEN"
 ```
 
 Response:
@@ -66,11 +72,11 @@ Response:
 
 ## Get User
 
-Get a specific user by ID.
+Get a specific user by ID. Requires admin authentication.
 
 ```bash
 curl -X GET http://localhost:8080/v1/users/1 \
-  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+  -H "Authorization: Bearer YOUR_ADMIN_JWT_TOKEN"
 ```
 
 Response:
@@ -85,11 +91,11 @@ Response:
 
 ## Update User
 
-Update a user's information.
+Update a user's information. Requires admin authentication.
 
 ```bash
 curl -X PUT http://localhost:8080/v1/users/1 \
-  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -H "Authorization: Bearer YOUR_ADMIN_JWT_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
     "username": "updateduser",
@@ -110,22 +116,22 @@ Response:
 
 ## Delete User
 
-Delete a user by ID.
+Delete a user by ID. Requires admin authentication.
 
 ```bash
 curl -X DELETE http://localhost:8080/v1/users/1 \
-  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+  -H "Authorization: Bearer YOUR_ADMIN_JWT_TOKEN"
 ```
 
 Response: 204 No Content
 
 ## Create Role
 
-Create a new role.
+Create a new role. Requires admin authentication.
 
 ```bash
 curl -X POST http://localhost:8080/v1/roles \
-  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -H "Authorization: Bearer YOUR_ADMIN_JWT_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
     "name": "moderator",
@@ -145,11 +151,11 @@ Response:
 
 ## List Roles
 
-Get a list of all roles.
+Get a list of all roles. Requires admin authentication.
 
 ```bash
 curl -X GET http://localhost:8080/v1/roles \
-  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+  -H "Authorization: Bearer YOUR_ADMIN_JWT_TOKEN"
 ```
 
 Response:
@@ -178,11 +184,11 @@ Response:
 
 ## Get Role
 
-Get a specific role by ID.
+Get a specific role by ID. Requires admin authentication.
 
 ```bash
 curl -X GET http://localhost:8080/v1/roles/1 \
-  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+  -H "Authorization: Bearer YOUR_ADMIN_JWT_TOKEN"
 ```
 
 Response:
@@ -197,11 +203,11 @@ Response:
 
 ## Update Role
 
-Update a role's information.
+Update a role's information. Requires admin authentication.
 
 ```bash
 curl -X PUT http://localhost:8080/v1/roles/1 \
-  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -H "Authorization: Bearer YOUR_ADMIN_JWT_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
     "name": "superadmin",
@@ -221,11 +227,11 @@ Response:
 
 ## Delete Role
 
-Delete a role by ID.
+Delete a role by ID. Requires admin authentication.
 
 ```bash
 curl -X DELETE http://localhost:8080/v1/roles/4 \
-  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+  -H "Authorization: Bearer YOUR_ADMIN_JWT_TOKEN"
 ```
 
 Response: 204 No Content

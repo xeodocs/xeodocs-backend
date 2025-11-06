@@ -5,10 +5,43 @@ import (
 	"log"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/xeodocs/xeodocs-backend/internal/shared/auth"
 	"github.com/xeodocs/xeodocs-backend/internal/shared/config"
 )
+
+func JWTMiddleware(cfg *config.Config, requiredRole string) func(http.HandlerFunc) http.HandlerFunc {
+	return func(next http.HandlerFunc) http.HandlerFunc {
+		return func(w http.ResponseWriter, r *http.Request) {
+			authHeader := r.Header.Get("Authorization")
+			if authHeader == "" {
+				http.Error(w, "Authorization header required", http.StatusUnauthorized)
+				return
+			}
+
+			tokenString := strings.TrimPrefix(authHeader, "Bearer ")
+			if tokenString == authHeader {
+				http.Error(w, "Bearer token required", http.StatusUnauthorized)
+				return
+			}
+
+			claims, err := auth.ValidateJWT(tokenString, cfg)
+			if err != nil {
+				http.Error(w, "Invalid token", http.StatusUnauthorized)
+				return
+			}
+
+			if requiredRole != "" && claims.Role != requiredRole {
+				http.Error(w, "Insufficient permissions", http.StatusForbidden)
+				return
+			}
+
+			// Add claims to request context if needed
+			next(w, r)
+		}
+	}
+}
 
 func RegisterHandler(cfg *config.Config) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {

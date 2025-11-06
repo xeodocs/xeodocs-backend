@@ -15,11 +15,11 @@ func main() {
 	defer db.Close()
 
 	mux := http.NewServeMux()
-	mux.HandleFunc("/auth/register", auth.RegisterHandler(cfg))
+	mux.HandleFunc("/auth/register", auth.JWTMiddleware(cfg, "admin")(auth.RegisterHandler(cfg)))
 	mux.HandleFunc("/auth/login", auth.LoginHandler(cfg))
 
-	// Users CRUD
-	mux.HandleFunc("/users", auth.ListUsersHandler(cfg))
+	// Users CRUD - protected
+	mux.HandleFunc("/users", auth.JWTMiddleware(cfg, "admin")(auth.ListUsersHandler(cfg)))
 	mux.HandleFunc("/users/", func(w http.ResponseWriter, r *http.Request) {
 		path := r.URL.Path
 		if len(path) > 7 && path[:7] == "/users/" {
@@ -30,11 +30,11 @@ func main() {
 			}
 			switch r.Method {
 			case http.MethodGet:
-				auth.GetUserHandler(cfg)(w, r)
+				auth.JWTMiddleware(cfg, "admin")(auth.GetUserHandler(cfg))(w, r)
 			case http.MethodPut:
-				auth.UpdateUserHandler(cfg)(w, r)
+				auth.JWTMiddleware(cfg, "admin")(auth.UpdateUserHandler(cfg))(w, r)
 			case http.MethodDelete:
-				auth.DeleteUserHandler(cfg)(w, r)
+				auth.JWTMiddleware(cfg, "admin")(auth.DeleteUserHandler(cfg))(w, r)
 			default:
 				http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 			}
@@ -43,13 +43,13 @@ func main() {
 		}
 	})
 
-	// Roles CRUD
+	// Roles CRUD - protected
 	mux.HandleFunc("/roles", func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
 		case http.MethodGet:
-			auth.ListRolesHandler(cfg)(w, r)
+			auth.JWTMiddleware(cfg, "admin")(auth.ListRolesHandler(cfg))(w, r)
 		case http.MethodPost:
-			auth.CreateRoleHandler(cfg)(w, r)
+			auth.JWTMiddleware(cfg, "admin")(auth.CreateRoleHandler(cfg))(w, r)
 		default:
 			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		}
@@ -64,11 +64,11 @@ func main() {
 			}
 			switch r.Method {
 			case http.MethodGet:
-				auth.GetRoleHandler(cfg)(w, r)
+				auth.JWTMiddleware(cfg, "admin")(auth.GetRoleHandler(cfg))(w, r)
 			case http.MethodPut:
-				auth.UpdateRoleHandler(cfg)(w, r)
+				auth.JWTMiddleware(cfg, "admin")(auth.UpdateRoleHandler(cfg))(w, r)
 			case http.MethodDelete:
-				auth.DeleteRoleHandler(cfg)(w, r)
+				auth.JWTMiddleware(cfg, "admin")(auth.DeleteRoleHandler(cfg))(w, r)
 			default:
 				http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 			}
