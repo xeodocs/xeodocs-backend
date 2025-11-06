@@ -9,6 +9,9 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// interfaceSliceToStringSlice converts a slice of interface{} to a slice of strings.
+// This helper function is used in tests to compare JSON arrays returned from API
+// responses with expected string arrays, since JSON unmarshaling produces interface{} slices.
 func interfaceSliceToStringSlice(slice []interface{}) []string {
 	result := make([]string, len(slice))
 	for i, v := range slice {
@@ -17,6 +20,15 @@ func interfaceSliceToStringSlice(slice []interface{}) []string {
 	return result
 }
 
+// TestProjectCRUD tests the complete Create, Read, Update, Delete (CRUD) lifecycle
+// of project resources. It validates that:
+// - Projects can be created with all required fields (name, repo_url, languages, build_commands)
+// - Projects can be listed and the new project appears in the list
+// - Individual projects can be retrieved by ID
+// - Projects can be fully updated with new data (name, repo_url, languages, build_commands)
+// - The updated_at timestamp changes after updates
+// - Projects can be deleted
+// - Accessing deleted projects returns 404 Not Found
 func TestProjectCRUD(t *testing.T) {
 	adminClient := LoginAsAdmin(t)
 
@@ -99,6 +111,13 @@ func TestProjectCRUD(t *testing.T) {
 	require.Equal(t, http.StatusNotFound, resp.StatusCode)
 }
 
+// TestProjectUserIsolation tests that project resources are properly isolated between users.
+// It ensures user data privacy by validating that:
+// - Users can only access projects they own
+// - Users cannot access projects owned by other users (returns 404)
+// - When listing projects, users only see their own projects
+// - Admins cannot access non-admin projects and vice versa
+// - Proper cleanup of test data (projects and users)
 func TestProjectUserIsolation(t *testing.T) {
 	adminClient := LoginAsAdmin(t)
 
@@ -220,6 +239,12 @@ func TestProjectUserIsolation(t *testing.T) {
 	adminClient.AssertNoContent(t, resp)
 }
 
+// TestProjectPartialUpdate tests the ability to update only specific fields of a project
+// without affecting other fields. It validates that:
+// - Only the provided fields are updated (partial updates)
+// - Unspecified fields remain unchanged
+// - Multiple partial updates work correctly
+// - Array fields (languages, build_commands) can be updated independently
 func TestProjectPartialUpdate(t *testing.T) {
 	adminClient := LoginAsAdmin(t)
 
@@ -265,6 +290,13 @@ func TestProjectPartialUpdate(t *testing.T) {
 	adminClient.AssertNoContent(t, resp)
 }
 
+// TestProjectValidation tests input validation and error handling for project endpoints.
+// It validates that the API properly rejects invalid requests and returns appropriate errors:
+// - Creating projects with missing required fields (name, repo_url) returns 400 Bad Request
+// - Creating projects with empty required fields returns 400 Bad Request
+// - Accessing non-existent projects returns 404 Not Found
+// - Updating non-existent projects returns 404 Not Found
+// - Deleting non-existent projects returns 404 Not Found
 func TestProjectValidation(t *testing.T) {
 	adminClient := LoginAsAdmin(t)
 

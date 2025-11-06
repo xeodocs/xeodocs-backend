@@ -8,6 +8,14 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// TestAuthFlows tests the complete authentication flow including user registration,
+// password changes, and user cleanup. It validates that:
+// - Admin users can register new non-admin users
+// - Non-admin users can login with their credentials
+// - Users can change their passwords
+// - Users can login with updated passwords
+// - Admin users can delete non-admin users
+// - Deleted users cannot be accessed (404 response)
 func TestAuthFlows(t *testing.T) {
 	// 1. Login as the default admin user
 	adminClient := LoginAsAdmin(t)
@@ -60,6 +68,14 @@ func TestAuthFlows(t *testing.T) {
 	require.Equal(t, http.StatusNotFound, resp.StatusCode)
 }
 
+// TestUserCRUD tests the complete Create, Read, Update, Delete (CRUD) lifecycle
+// of user resources through the admin interface. It validates that:
+// - Admin users can register new users via /auth/register
+// - Admin users can list all users
+// - Admin users can retrieve individual users by ID
+// - Admin users can update user details (username, role)
+// - Admin users can delete users
+// - Accessing deleted users returns 404 Not Found
 func TestUserCRUD(t *testing.T) {
 	adminClient := LoginAsAdmin(t)
 
@@ -116,6 +132,14 @@ func TestUserCRUD(t *testing.T) {
 	require.Equal(t, http.StatusNotFound, resp.StatusCode)
 }
 
+// TestRoleCRUD tests the complete Create, Read, Update, Delete (CRUD) lifecycle
+// of role resources through the admin interface. It validates that:
+// - Admin users can create new roles with name and description
+// - Admin users can list all roles (including default roles)
+// - Admin users can retrieve individual roles by ID
+// - Admin users can update role details (name, description)
+// - Admin users can delete roles
+// - Accessing deleted roles returns 404 Not Found
 func TestRoleCRUD(t *testing.T) {
 	adminClient := LoginAsAdmin(t)
 
