@@ -29,6 +29,10 @@ type LoginRequest struct {
 	Password string `json:"password"`
 }
 
+type ChangePasswordRequest struct {
+	Password string `json:"password"`
+}
+
 type Role struct {
 	ID          int       `json:"id"`
 	Name        string    `json:"name"`
@@ -101,6 +105,19 @@ func GetUserByUsername(username string) (*User, error) {
 		return nil, err
 	}
 	return user, nil
+}
+
+func ChangePassword(userID int, newPassword string) error {
+	user := &User{
+		ID:       userID,
+		Password: newPassword,
+	}
+	if err := user.HashPassword(); err != nil {
+		return err
+	}
+	query := `UPDATE users SET password = $1 WHERE id = $2`
+	_, err := db.DB.Exec(query, user.Password, userID)
+	return err
 }
 
 // User CRUD functions

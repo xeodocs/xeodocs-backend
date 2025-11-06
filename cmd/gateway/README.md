@@ -49,6 +49,21 @@ Response:
 }
 ```
 
+## Change Password
+
+Change the password for the authenticated user.
+
+```bash
+curl -X PUT http://localhost:8080/v1/auth/change-password \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "password": "newsecurepassword"
+  }'
+```
+
+Response: 204 No Content
+
 ## List Users
 
 Get a list of all users. Requires admin authentication.

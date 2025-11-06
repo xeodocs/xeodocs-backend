@@ -17,6 +17,7 @@ func main() {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/auth/register", auth.JWTMiddleware(cfg, "admin")(auth.RegisterHandler(cfg)))
 	mux.HandleFunc("/auth/login", auth.LoginHandler(cfg))
+	mux.HandleFunc("/auth/change-password", auth.JWTMiddleware(cfg, "")(auth.ChangePasswordHandler(cfg)))
 
 	// Users CRUD - protected
 	mux.HandleFunc("/users", auth.JWTMiddleware(cfg, "admin")(auth.ListUsersHandler(cfg)))

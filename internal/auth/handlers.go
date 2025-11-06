@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"context"
 	"encoding/json"
 	"log"
 	"net/http"
@@ -37,7 +38,9 @@ func JWTMiddleware(cfg *config.Config, requiredRole string) func(http.HandlerFun
 				return
 			}
 
-			// Add claims to request context if needed
+			// Add claims to request context
+			ctx := context.WithValue(r.Context(), "claims", claims)
+			r = r.WithContext(ctx)
 			next(w, r)
 		}
 	}
@@ -108,6 +111,31 @@ func LoginHandler(cfg *config.Config) http.HandlerFunc {
 
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(map[string]string{"token": token})
+	}
+}
+
+func ChangePasswordHandler(cfg *config.Config) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPut {
+			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+
+		claims := r.Context().Value("claims").(*auth.Claims)
+
+		var req ChangePasswordRequest
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			http.Error(w, "Invalid request", http.StatusBadRequest)
+			return
+		}
+
+		if err := ChangePassword(claims.UserID, req.Password); err != nil {
+			log.Println("Error changing password:", err)
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
+			return
+		}
+
+		w.WriteHeader(http.StatusNoContent)
 	}
 }
 

@@ -9,40 +9,25 @@ import (
 )
 
 func TestAuthFlows(t *testing.T) {
-	// 1. Login as default admin user
+	// 1. Login as the default admin user
 	adminClient := LoginAsAdmin(t)
 
-	// 2. Change the password for the default admin user
-	resp := adminClient.MakeRequest(t, "PUT", "/users/1", map[string]interface{}{
-		"username": "admin",
-		"password": "newpassword123",
-	})
-	adminClient.AssertSuccess(t, resp)
-	var updatedUser map[string]interface{}
-	adminClient.ParseJSON(t, resp, &updatedUser)
-	require.Equal(t, "admin", updatedUser["username"])
-	require.Equal(t, float64(1), updatedUser["id"]) // JSON numbers are float64
-
-	// Verify login with new password
-	newAdminClient := NewTestClient(gatewayURL)
-	newAdminClient.Login(t, "admin", "newpassword123")
-
-	// 3. Create a new non-admin user
-	resp = newAdminClient.MakeRequest(t, "POST", "/auth/register", map[string]interface{}{
+	// 2. Create (register) a new non-admin user
+	resp := adminClient.MakeRequest(t, "POST", "/auth/register", map[string]interface{}{
 		"username": "testuser",
-		"password": "testpass123",
+		"password": "oldpassword",
 		"role":     "viewer",
 	})
-	newAdminClient.AssertSuccess(t, resp)
+	adminClient.AssertSuccess(t, resp)
 	var registerRes map[string]interface{}
-	newAdminClient.ParseJSON(t, resp, &registerRes)
+	adminClient.ParseJSON(t, resp, &registerRes)
 	require.NotEmpty(t, registerRes["token"])
 
 	// Get user id by listing users
-	resp = newAdminClient.MakeRequest(t, "GET", "/users", nil)
-	newAdminClient.AssertSuccess(t, resp)
+	resp = adminClient.MakeRequest(t, "GET", "/users", nil)
+	adminClient.AssertSuccess(t, resp)
 	var users []map[string]interface{}
-	newAdminClient.ParseJSON(t, resp, &users)
+	adminClient.ParseJSON(t, resp, &users)
 	var userID int
 	for _, u := range users {
 		if u["username"] == "testuser" {
@@ -52,31 +37,82 @@ func TestAuthFlows(t *testing.T) {
 	}
 	require.NotZero(t, userID)
 
-	// 4. Read the new non-admin user
-	resp = newAdminClient.MakeRequest(t, "GET", fmt.Sprintf("/users/%d", userID), nil)
-	newAdminClient.AssertSuccess(t, resp)
-	var fetchedUser map[string]interface{}
-	newAdminClient.ParseJSON(t, resp, &fetchedUser)
-	require.Equal(t, "testuser", fetchedUser["username"])
-	require.Equal(t, "viewer", fetchedUser["role"])
+	// 3. Login as the new non-admin user
+	newUserClient := NewTestClient(gatewayURL)
+	newUserClient.Login(t, "testuser", "oldpassword")
 
-	// 5. Edit the new non-admin user
-	resp = newAdminClient.MakeRequest(t, "PUT", fmt.Sprintf("/users/%d", userID), map[string]interface{}{
-		"username": "updateduser",
-		"role":     "editor",
+	// 4. Change the new user password
+	resp = newUserClient.MakeRequest(t, "PUT", "/auth/change-password", map[string]interface{}{
+		"password": "newpassword",
 	})
-	newAdminClient.AssertSuccess(t, resp)
-	var updatedUser2 map[string]interface{}
-	newAdminClient.ParseJSON(t, resp, &updatedUser2)
-	require.Equal(t, "updateduser", updatedUser2["username"])
-	require.Equal(t, "editor", updatedUser2["role"])
+	newUserClient.AssertNoContent(t, resp)
 
-	// 6. Delete the new non-admin user
-	resp = newAdminClient.MakeRequest(t, "DELETE", fmt.Sprintf("/users/%d", userID), nil)
-	newAdminClient.AssertNoContent(t, resp)
+	// 5. Login as the new non-admin user using the new password
+	newUserClientWithNewPass := NewTestClient(gatewayURL)
+	newUserClientWithNewPass.Login(t, "testuser", "newpassword")
+
+	// 6. Remove the new non-admin user
+	resp = adminClient.MakeRequest(t, "DELETE", fmt.Sprintf("/users/%d", userID), nil)
+	adminClient.AssertNoContent(t, resp)
 
 	// Verify deletion - should get 404
-	resp = newAdminClient.MakeRequest(t, "GET", fmt.Sprintf("/users/%d", userID), nil)
+	resp = adminClient.MakeRequest(t, "GET", fmt.Sprintf("/users/%d", userID), nil)
+	require.Equal(t, http.StatusNotFound, resp.StatusCode)
+}
+
+func TestUserCRUD(t *testing.T) {
+	adminClient := LoginAsAdmin(t)
+
+	// Create a new user
+	resp := adminClient.MakeRequest(t, "POST", "/auth/register", map[string]interface{}{
+		"username": "cruduser",
+		"password": "crudpass",
+		"role":     "viewer",
+	})
+	adminClient.AssertSuccess(t, resp)
+	var registerRes map[string]interface{}
+	adminClient.ParseJSON(t, resp, &registerRes)
+	require.NotEmpty(t, registerRes["token"])
+
+	// Get user id by listing users
+	resp = adminClient.MakeRequest(t, "GET", "/users", nil)
+	adminClient.AssertSuccess(t, resp)
+	var users []map[string]interface{}
+	adminClient.ParseJSON(t, resp, &users)
+	var userID int
+	for _, u := range users {
+		if u["username"] == "cruduser" {
+			userID = int(u["id"].(float64))
+			break
+		}
+	}
+	require.NotZero(t, userID)
+
+	// Read the user
+	resp = adminClient.MakeRequest(t, "GET", fmt.Sprintf("/users/%d", userID), nil)
+	adminClient.AssertSuccess(t, resp)
+	var fetchedUser map[string]interface{}
+	adminClient.ParseJSON(t, resp, &fetchedUser)
+	require.Equal(t, "cruduser", fetchedUser["username"])
+	require.Equal(t, "viewer", fetchedUser["role"])
+
+	// Update the user
+	resp = adminClient.MakeRequest(t, "PUT", fmt.Sprintf("/users/%d", userID), map[string]interface{}{
+		"username": "updatedcruduser",
+		"role":     "editor",
+	})
+	adminClient.AssertSuccess(t, resp)
+	var updatedUser map[string]interface{}
+	adminClient.ParseJSON(t, resp, &updatedUser)
+	require.Equal(t, "updatedcruduser", updatedUser["username"])
+	require.Equal(t, "editor", updatedUser["role"])
+
+	// Delete the user
+	resp = adminClient.MakeRequest(t, "DELETE", fmt.Sprintf("/users/%d", userID), nil)
+	adminClient.AssertNoContent(t, resp)
+
+	// Verify deletion
+	resp = adminClient.MakeRequest(t, "GET", fmt.Sprintf("/users/%d", userID), nil)
 	require.Equal(t, http.StatusNotFound, resp.StatusCode)
 }
 
