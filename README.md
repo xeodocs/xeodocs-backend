@@ -58,7 +58,7 @@ End-to-End tests validate the full workflow through HTTP requests to the API gat
 #### E2E Test Coverage
 
 - **Auth Service**: Login, password change, user CRUD (create, read, update, delete), role CRUD
-- Tests simulate real client interactions via the gateway at `http://localhost:8080/v1`
+- Tests simulate real client interactions via the gateway at `http://localhost:12020/v1`
 - Assumes empty DB with tables created and default admin user seeded
 
 ### Unit Tests

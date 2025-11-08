@@ -18,11 +18,11 @@ func Load() *Config {
 	return &Config{
 		DatabaseURL:       getEnv("DATABASE_URL", "postgres://user:password@localhost/xeodocs_auth?sslmode=disable"),
 		JWTSecret:         getEnv("JWT_SECRET", "your-secret-key"),
-		Port:              getEnv("PORT", "8081"),
-		GatewayPort:       getEnv("GATEWAY_PORT", "8080"),
-		AuthServiceURL:    getEnv("AUTH_SERVICE_URL", "http://localhost:8081"),
-		ProjectPort:       getEnv("PROJECT_PORT", "8082"),
-		ProjectServiceURL: getEnv("PROJECT_SERVICE_URL", "http://localhost:8082"),
+		Port:              getEnv("PORT", "12021"),
+		GatewayPort:       getEnv("GATEWAY_PORT", "12020"),
+		AuthServiceURL:    getEnv("AUTH_SERVICE_URL", "http://localhost:12021"),
+		ProjectPort:       getEnv("PROJECT_PORT", "12022"),
+		ProjectServiceURL: getEnv("PROJECT_SERVICE_URL", "http://localhost:12022"),
 	}
 }
 

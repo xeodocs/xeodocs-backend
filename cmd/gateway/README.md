@@ -12,7 +12,7 @@ Password: `tempadmin123`
 *Change this password after first login!*
 
 ```bash
-curl -X POST http://localhost:8080/v1/auth/register \
+curl -X POST http://localhost:12020/v1/auth/register \
   -H "Authorization: Bearer YOUR_ADMIN_JWT_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
@@ -34,7 +34,7 @@ Response:
 Authenticate an existing user.
 
 ```bash
-curl -X POST http://localhost:8080/v1/auth/login \
+curl -X POST http://localhost:12020/v1/auth/login \
   -H "Content-Type: application/json" \
   -d '{
     "username": "testuser",
@@ -54,7 +54,7 @@ Response:
 Change the password for the authenticated user.
 
 ```bash
-curl -X PUT http://localhost:8080/v1/auth/change-password \
+curl -X PUT http://localhost:12020/v1/auth/change-password \
   -H "Authorization: Bearer YOUR_JWT_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
@@ -69,7 +69,7 @@ Response: 204 No Content
 Get a list of all users. Requires admin authentication.
 
 ```bash
-curl -X GET http://localhost:8080/v1/users \
+curl -X GET http://localhost:12020/v1/users \
   -H "Authorization: Bearer YOUR_ADMIN_JWT_TOKEN"
 ```
 
@@ -90,7 +90,7 @@ Response:
 Get a specific user by ID. Requires admin authentication.
 
 ```bash
-curl -X GET http://localhost:8080/v1/users/1 \
+curl -X GET http://localhost:12020/v1/users/1 \
   -H "Authorization: Bearer YOUR_ADMIN_JWT_TOKEN"
 ```
 
@@ -109,7 +109,7 @@ Response:
 Update a user's information. Requires admin authentication.
 
 ```bash
-curl -X PUT http://localhost:8080/v1/users/1 \
+curl -X PUT http://localhost:12020/v1/users/1 \
   -H "Authorization: Bearer YOUR_ADMIN_JWT_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
@@ -134,7 +134,7 @@ Response:
 Delete a user by ID. Requires admin authentication.
 
 ```bash
-curl -X DELETE http://localhost:8080/v1/users/1 \
+curl -X DELETE http://localhost:12020/v1/users/1 \
   -H "Authorization: Bearer YOUR_ADMIN_JWT_TOKEN"
 ```
 
@@ -145,7 +145,7 @@ Response: 204 No Content
 Create a new role. Requires admin authentication.
 
 ```bash
-curl -X POST http://localhost:8080/v1/roles \
+curl -X POST http://localhost:12020/v1/roles \
   -H "Authorization: Bearer YOUR_ADMIN_JWT_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
@@ -169,7 +169,7 @@ Response:
 Get a list of all roles. Requires admin authentication.
 
 ```bash
-curl -X GET http://localhost:8080/v1/roles \
+curl -X GET http://localhost:12020/v1/roles \
   -H "Authorization: Bearer YOUR_ADMIN_JWT_TOKEN"
 ```
 
@@ -202,7 +202,7 @@ Response:
 Get a specific role by ID. Requires admin authentication.
 
 ```bash
-curl -X GET http://localhost:8080/v1/roles/1 \
+curl -X GET http://localhost:12020/v1/roles/1 \
   -H "Authorization: Bearer YOUR_ADMIN_JWT_TOKEN"
 ```
 
@@ -221,7 +221,7 @@ Response:
 Update a role's information. Requires admin authentication.
 
 ```bash
-curl -X PUT http://localhost:8080/v1/roles/1 \
+curl -X PUT http://localhost:12020/v1/roles/1 \
   -H "Authorization: Bearer YOUR_ADMIN_JWT_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
@@ -245,7 +245,7 @@ Response:
 Delete a role by ID. Requires admin authentication.
 
 ```bash
-curl -X DELETE http://localhost:8080/v1/roles/4 \
+curl -X DELETE http://localhost:12020/v1/roles/4 \
   -H "Authorization: Bearer YOUR_ADMIN_JWT_TOKEN"
 ```
 
@@ -256,7 +256,7 @@ Response: 204 No Content
 Create a new project. Requires authentication.
 
 ```bash
-curl -X POST http://localhost:8080/v1/projects \
+curl -X POST http://localhost:12020/v1/projects \
   -H "Authorization: Bearer YOUR_JWT_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
@@ -286,7 +286,7 @@ Response:
 Get a list of all your projects. Requires authentication.
 
 ```bash
-curl -X GET http://localhost:8080/v1/projects \
+curl -X GET http://localhost:12020/v1/projects \
   -H "Authorization: Bearer YOUR_JWT_TOKEN"
 ```
 
@@ -311,7 +311,7 @@ Response:
 Get a specific project by ID. Requires authentication.
 
 ```bash
-curl -X GET http://localhost:8080/v1/projects/1 \
+curl -X GET http://localhost:12020/v1/projects/1 \
   -H "Authorization: Bearer YOUR_JWT_TOKEN"
 ```
 
@@ -334,7 +334,7 @@ Response:
 Update a project's information. Requires authentication. Only provided fields will be updated.
 
 ```bash
-curl -X PUT http://localhost:8080/v1/projects/1 \
+curl -X PUT http://localhost:12020/v1/projects/1 \
   -H "Authorization: Bearer YOUR_JWT_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
@@ -362,7 +362,7 @@ Response:
 Delete a project by ID. Requires authentication.
 
 ```bash
-curl -X DELETE http://localhost:8080/v1/projects/1 \
+curl -X DELETE http://localhost:12020/v1/projects/1 \
   -H "Authorization: Bearer YOUR_JWT_TOKEN"
 ```
 

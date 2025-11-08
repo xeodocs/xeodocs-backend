@@ -10,7 +10,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-const gatewayURL = "http://localhost:8080/v1"
+const gatewayURL = "http://localhost:12020/v1"
 
 // TestClient is a helper struct for making authenticated HTTP requests
 // to the API gateway during end-to-end tests. It manages authentication
