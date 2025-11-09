@@ -1,8 +1,11 @@
 package worker
 
 import (
+	"bytes"
 	"encoding/json"
+	"fmt"
 	"log"
+	"net/http"
 
 	"github.com/rabbitmq/amqp091-go"
 	"github.com/xeodocs/xeodocs-backend/internal/shared/config"
@@ -43,14 +46,14 @@ func Start(cfg *config.Config) {
 
 	// Start consuming from each queue
 	for _, queue := range queues {
-		go consumeQueue(ch, queue)
+		go consumeQueue(cfg, ch, queue)
 	}
 
 	log.Println("Worker Service initialized successfully. Listening for messages...")
 	select {} // Keep running
 }
 
-func consumeQueue(ch *amqp091.Channel, queueName string) {
+func consumeQueue(cfg *config.Config, ch *amqp091.Channel, queueName string) {
 	msgs, err := ch.Consume(
 		queueName, // queue
 		"",        // consumer
@@ -78,7 +81,7 @@ func consumeQueue(ch *amqp091.Channel, queueName string) {
 			log.Printf("Received task: %s, ID: %s", task.Type, task.ID)
 
 			// Process the task (placeholder)
-			processTask(task)
+			processTask(cfg, task)
 
 			d.Ack(false) // acknowledge the message
 		}
@@ -88,8 +91,147 @@ func consumeQueue(ch *amqp091.Channel, queueName string) {
 	<-forever
 }
 
-func processTask(task Task) {
+func processTask(cfg *config.Config, task Task) {
 	log.Printf("Processing task type: %s with payload: %v", task.Type, task.Payload)
-	// TODO: Implement actual task processing logic
-	// e.g., call Repository Service for clone_repo, Translation Service for translate_files, etc.
+
+	switch task.Type {
+	case "clone_repo":
+		handleCloneRepo(cfg, task.Payload)
+	case "create_language_copies":
+		handleCreateLanguageCopies(cfg, task.Payload)
+	case "sync_repo":
+		handleSyncRepo(cfg, task.Payload)
+	case "delete_repo":
+		handleDeleteRepo(cfg, task.Payload)
+	default:
+		log.Printf("Unknown task type: %s", task.Type)
+	}
+}
+
+func handleCloneRepo(cfg *config.Config, payload map[string]interface{}) {
+	repoURL, ok1 := payload["repoUrl"].(string)
+	projectIDFloat, ok2 := payload["projectId"].(float64)
+
+	if !ok1 || !ok2 {
+		log.Printf("Invalid payload for clone_repo: %v", payload)
+		return
+	}
+
+	projectID := int(projectIDFloat)
+
+	req := map[string]interface{}{
+		"repoUrl":   repoURL,
+		"projectId": projectID,
+	}
+
+	if err := callRepositoryService(cfg, http.MethodPost, "/internal/clone-repo", req); err != nil {
+		log.Printf("Failed to clone repo: %v", err)
+	}
+}
+
+func handleCreateLanguageCopies(cfg *config.Config, payload map[string]interface{}) {
+	projectIDFloat, ok1 := payload["projectId"].(float64)
+	languagesInterface, ok2 := payload["languages"].([]interface{})
+
+	if !ok1 || !ok2 {
+		log.Printf("Invalid payload for create_language_copies: %v", payload)
+		return
+	}
+
+	projectID := int(projectIDFloat)
+	languages := make([]string, len(languagesInterface))
+	for i, lang := range languagesInterface {
+		if langStr, ok := lang.(string); ok {
+			languages[i] = langStr
+		}
+	}
+
+	req := map[string]interface{}{
+		"projectId": projectID,
+		"languages": languages,
+	}
+
+	if err := callRepositoryService(cfg, http.MethodPost, "/internal/create-language-copies", req); err != nil {
+		log.Printf("Failed to create language copies: %v", err)
+	}
+}
+
+func handleSyncRepo(cfg *config.Config, payload map[string]interface{}) {
+	projectIDFloat, ok := payload["projectId"].(float64)
+
+	if !ok {
+		log.Printf("Invalid payload for sync_repo: %v", payload)
+		return
+	}
+
+	projectID := int(projectIDFloat)
+
+	req := map[string]interface{}{
+		"projectId": projectID,
+	}
+
+	if err := callRepositoryService(cfg, http.MethodPut, "/internal/sync-repo", req); err != nil {
+		log.Printf("Failed to sync repo: %v", err)
+	}
+}
+
+func handleDeleteRepo(cfg *config.Config, payload map[string]interface{}) {
+	projectIDFloat, ok := payload["projectId"].(float64)
+
+	if !ok {
+		log.Printf("Invalid payload for delete_repo: %v", payload)
+		return
+	}
+
+	projectID := int(projectIDFloat)
+
+	req := map[string]interface{}{
+		"projectId": projectID,
+	}
+
+	if err := callRepositoryService(cfg, http.MethodDelete, "/internal/delete-repo", req); err != nil {
+		log.Printf("Failed to delete repo: %v", err)
+	}
+}
+
+func callRepositoryService(cfg *config.Config, method, endpoint string, req map[string]interface{}) error {
+	url := cfg.RepositoryServiceURL + endpoint
+
+	jsonData, err := json.Marshal(req)
+	if err != nil {
+		return err
+	}
+
+	var resp *http.Response
+	switch method {
+	case http.MethodPost:
+		resp, err = http.Post(url, "application/json", bytes.NewBuffer(jsonData))
+	case http.MethodPut:
+		req, err := http.NewRequest(http.MethodPut, url, bytes.NewBuffer(jsonData))
+		if err != nil {
+			return err
+		}
+		req.Header.Set("Content-Type", "application/json")
+		resp, err = http.DefaultClient.Do(req)
+	case http.MethodDelete:
+		req, err := http.NewRequest(http.MethodDelete, url, bytes.NewBuffer(jsonData))
+		if err != nil {
+			return err
+		}
+		req.Header.Set("Content-Type", "application/json")
+		resp, err = http.DefaultClient.Do(req)
+	default:
+		return fmt.Errorf("unsupported method: %s", method)
+	}
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusNoContent {
+		return fmt.Errorf("repository service returned status %d", resp.StatusCode)
+	}
+
+	log.Printf("Successfully called %s %s", method, endpoint)
+	return nil
 }
