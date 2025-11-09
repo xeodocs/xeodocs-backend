@@ -6,7 +6,6 @@ import (
 	"net/http"
 	"strconv"
 
-	"github.com/xeodocs/xeodocs-backend/internal/shared/auth"
 	"github.com/xeodocs/xeodocs-backend/internal/shared/config"
 )
 
@@ -16,8 +15,6 @@ func CreateProjectHandler(cfg *config.Config) http.HandlerFunc {
 			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 			return
 		}
-
-		claims := r.Context().Value("claims").(*auth.Claims)
 
 		var req CreateProjectRequest
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -30,12 +27,20 @@ func CreateProjectHandler(cfg *config.Config) http.HandlerFunc {
 			http.Error(w, "name is required", http.StatusBadRequest)
 			return
 		}
+		if req.DocURL == "" {
+			http.Error(w, "doc_url is required", http.StatusBadRequest)
+			return
+		}
 		if req.RepoURL == "" {
 			http.Error(w, "repo_url is required", http.StatusBadRequest)
 			return
 		}
+		if req.BuildCommand == "" {
+			http.Error(w, "build_command is required", http.StatusBadRequest)
+			return
+		}
 
-		project, err := CreateProject(claims.UserID, req)
+		project, err := CreateProject(req)
 		if err != nil {
 			log.Println("Error creating project:", err)
 			http.Error(w, "Internal server error", http.StatusInternalServerError)
@@ -55,9 +60,7 @@ func ListProjectsHandler(cfg *config.Config) http.HandlerFunc {
 			return
 		}
 
-		claims := r.Context().Value("claims").(*auth.Claims)
-
-		projects, err := GetProjects(claims.UserID)
+		projects, err := GetProjects()
 		if err != nil {
 			log.Println("Error getting projects:", err)
 			http.Error(w, "Internal server error", http.StatusInternalServerError)
@@ -76,8 +79,6 @@ func GetProjectHandler(cfg *config.Config) http.HandlerFunc {
 			return
 		}
 
-		claims := r.Context().Value("claims").(*auth.Claims)
-
 		idStr := r.URL.Path[len("/projects/"):]
 		id, err := strconv.Atoi(idStr)
 		if err != nil {
@@ -85,7 +86,7 @@ func GetProjectHandler(cfg *config.Config) http.HandlerFunc {
 			return
 		}
 
-		project, err := GetProjectByID(id, claims.UserID)
+		project, err := GetProjectByID(id)
 		if err != nil {
 			if err.Error() == "project not found" {
 				http.Error(w, "Project not found", http.StatusNotFound)
@@ -108,8 +109,6 @@ func UpdateProjectHandler(cfg *config.Config) http.HandlerFunc {
 			return
 		}
 
-		claims := r.Context().Value("claims").(*auth.Claims)
-
 		idStr := r.URL.Path[len("/projects/"):]
 		id, err := strconv.Atoi(idStr)
 		if err != nil {
@@ -123,7 +122,7 @@ func UpdateProjectHandler(cfg *config.Config) http.HandlerFunc {
 			return
 		}
 
-		project, err := UpdateProject(id, claims.UserID, req)
+		project, err := UpdateProject(id, req)
 		if err != nil {
 			if err.Error() == "project not found" {
 				http.Error(w, "Project not found", http.StatusNotFound)
@@ -146,8 +145,6 @@ func DeleteProjectHandler(cfg *config.Config) http.HandlerFunc {
 			return
 		}
 
-		claims := r.Context().Value("claims").(*auth.Claims)
-
 		idStr := r.URL.Path[len("/projects/"):]
 		id, err := strconv.Atoi(idStr)
 		if err != nil {
@@ -155,7 +152,7 @@ func DeleteProjectHandler(cfg *config.Config) http.HandlerFunc {
 			return
 		}
 
-		err = DeleteProject(id, claims.UserID)
+		err = DeleteProject(id)
 		if err != nil {
 			if err.Error() == "project not found" {
 				http.Error(w, "Project not found", http.StatusNotFound)

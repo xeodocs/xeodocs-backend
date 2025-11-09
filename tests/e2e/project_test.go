@@ -34,10 +34,13 @@ func TestProjectCRUD(t *testing.T) {
 
 	// Create a new project
 	projectData := map[string]interface{}{
-		"name":          "Test Documentation Project",
-		"repo_url":      "https://github.com/example/docs",
-		"languages":     []string{"en", "es", "fr"},
-		"build_commands": []string{"npm install", "npm run build"},
+		"name":           "Test Documentation Project",
+		"doc_url":        "https://example.com/docs",
+		"repo_url":       "https://github.com/example/docs",
+		"languages":      []string{"en", "es", "fr"},
+		"build_command":  "npm run build",
+		"export_command": "npm run export",
+		"preview_command": "npm run preview",
 	}
 
 	resp := adminClient.MakeRequest(t, "POST", "/projects", projectData)
@@ -46,9 +49,12 @@ func TestProjectCRUD(t *testing.T) {
 	adminClient.ParseJSON(t, resp, &createdProject)
 	require.NotEmpty(t, createdProject["id"])
 	require.Equal(t, projectData["name"], createdProject["name"])
+	require.Equal(t, projectData["doc_url"], createdProject["doc_url"])
 	require.Equal(t, projectData["repo_url"], createdProject["repo_url"])
 	require.Equal(t, projectData["languages"], interfaceSliceToStringSlice(createdProject["languages"].([]interface{})))
-	require.Equal(t, projectData["build_commands"], interfaceSliceToStringSlice(createdProject["build_commands"].([]interface{})))
+	require.Equal(t, projectData["build_command"], createdProject["build_command"])
+	require.Equal(t, projectData["export_command"], createdProject["export_command"])
+	require.Equal(t, projectData["preview_command"], createdProject["preview_command"])
 	require.NotEmpty(t, createdProject["created_at"])
 	require.NotEmpty(t, createdProject["updated_at"])
 
@@ -79,16 +85,22 @@ func TestProjectCRUD(t *testing.T) {
 	adminClient.ParseJSON(t, resp, &fetchedProject)
 	require.Equal(t, projectID, int(fetchedProject["id"].(float64)))
 	require.Equal(t, projectData["name"], fetchedProject["name"])
+	require.Equal(t, projectData["doc_url"], fetchedProject["doc_url"])
 	require.Equal(t, projectData["repo_url"], fetchedProject["repo_url"])
 	require.Equal(t, projectData["languages"], interfaceSliceToStringSlice(fetchedProject["languages"].([]interface{})))
-	require.Equal(t, projectData["build_commands"], interfaceSliceToStringSlice(fetchedProject["build_commands"].([]interface{})))
+	require.Equal(t, projectData["build_command"], fetchedProject["build_command"])
+	require.Equal(t, projectData["export_command"], fetchedProject["export_command"])
+	require.Equal(t, projectData["preview_command"], fetchedProject["preview_command"])
 
 	// Update the project
 	updatedData := map[string]interface{}{
-		"name":          "Updated Documentation Project",
-		"repo_url":      "https://github.com/example/updated-docs",
-		"languages":     []string{"en", "es", "fr", "de"},
-		"build_commands": []string{"npm install", "npm run build", "npm run deploy"},
+		"name":           "Updated Documentation Project",
+		"doc_url":        "https://example.com/updated-docs",
+		"repo_url":       "https://github.com/example/updated-docs",
+		"languages":      []string{"en", "es", "fr", "de"},
+		"build_command":  "yarn build",
+		"export_command": "yarn export",
+		"preview_command": "yarn preview",
 	}
 
 	resp = adminClient.MakeRequest(t, "PUT", fmt.Sprintf("/projects/%d", projectID), updatedData)
@@ -97,9 +109,12 @@ func TestProjectCRUD(t *testing.T) {
 	adminClient.ParseJSON(t, resp, &updatedProject)
 	require.Equal(t, projectID, int(updatedProject["id"].(float64)))
 	require.Equal(t, updatedData["name"], updatedProject["name"])
+	require.Equal(t, updatedData["doc_url"], updatedProject["doc_url"])
 	require.Equal(t, updatedData["repo_url"], updatedProject["repo_url"])
 	require.Equal(t, updatedData["languages"], interfaceSliceToStringSlice(updatedProject["languages"].([]interface{})))
-	require.Equal(t, updatedData["build_commands"], interfaceSliceToStringSlice(updatedProject["build_commands"].([]interface{})))
+	require.Equal(t, updatedData["build_command"], updatedProject["build_command"])
+	require.Equal(t, updatedData["export_command"], updatedProject["export_command"])
+	require.Equal(t, updatedData["preview_command"], updatedProject["preview_command"])
 	require.NotEqual(t, createdProject["updated_at"], updatedProject["updated_at"])
 
 	// Delete the project
@@ -111,22 +126,23 @@ func TestProjectCRUD(t *testing.T) {
 	require.Equal(t, http.StatusNotFound, resp.StatusCode)
 }
 
-// TestProjectUserIsolation tests that project resources are properly isolated between users.
-// It ensures user data privacy by validating that:
-// - Users can only access projects they own
-// - Users cannot access projects owned by other users (returns 404)
-// - When listing projects, users only see their own projects
-// - Admins cannot access non-admin projects and vice versa
+// TestProjectSharedAccess tests that project resources are accessible to all authenticated users.
+// It ensures that:
+// - Any authenticated user can access projects created by others
+// - Users can list all projects regardless of creator
 // - Proper cleanup of test data (projects and users)
-func TestProjectUserIsolation(t *testing.T) {
+func TestProjectSharedAccess(t *testing.T) {
 	adminClient := LoginAsAdmin(t)
 
 	// Create a project as admin
 	projectData := map[string]interface{}{
-		"name":          "Admin Project",
-		"repo_url":      "https://github.com/admin/docs",
-		"languages":     []string{"en"},
-		"build_commands": []string{"npm install"},
+		"name":           "Shared Project",
+		"doc_url":        "https://example.com/shared-docs",
+		"repo_url":       "https://github.com/shared/docs",
+		"languages":      []string{"en"},
+		"build_command":  "npm install",
+		"export_command": "npm run export",
+		"preview_command": "npm run preview",
 	}
 
 	resp := adminClient.MakeRequest(t, "POST", "/projects", projectData)
@@ -148,16 +164,38 @@ func TestProjectUserIsolation(t *testing.T) {
 	newUserClient := NewTestClient(gatewayURL)
 	newUserClient.Login(t, username, "testpass")
 
-	// Try to access admin's project - should fail
+	// User should be able to access admin's project
 	resp = newUserClient.MakeRequest(t, "GET", fmt.Sprintf("/projects/%d", adminProjectID), nil)
-	require.Equal(t, http.StatusNotFound, resp.StatusCode)
+	newUserClient.AssertSuccess(t, resp)
+	var fetchedProject map[string]interface{}
+	newUserClient.ParseJSON(t, resp, &fetchedProject)
+	require.Equal(t, projectData["name"], fetchedProject["name"])
+
+	// User should see the project in their list
+	resp = newUserClient.MakeRequest(t, "GET", "/projects", nil)
+	newUserClient.AssertSuccess(t, resp)
+	var userProjects []map[string]interface{}
+	newUserClient.ParseJSON(t, resp, &userProjects)
+
+	// Should see admin's project
+	projectFound := false
+	for _, p := range userProjects {
+		if int(p["id"].(float64)) == adminProjectID {
+			projectFound = true
+			break
+		}
+	}
+	require.True(t, projectFound, "User should see shared project")
 
 	// Create a project as the new user
 	userProjectData := map[string]interface{}{
-		"name":          "User Project",
-		"repo_url":      "https://github.com/user/docs",
-		"languages":     []string{"en", "fr"},
-		"build_commands": []string{"yarn install", "yarn build"},
+		"name":           "User Shared Project",
+		"doc_url":        "https://example.com/user-docs",
+		"repo_url":       "https://github.com/user/docs",
+		"languages":      []string{"en", "fr"},
+		"build_command":  "yarn install",
+		"export_command": "yarn export",
+		"preview_command": "yarn preview",
 	}
 
 	resp = newUserClient.MakeRequest(t, "POST", "/projects", userProjectData)
@@ -166,52 +204,12 @@ func TestProjectUserIsolation(t *testing.T) {
 	newUserClient.ParseJSON(t, resp, &userProject)
 	userProjectID := int(userProject["id"].(float64))
 
-	// User should be able to access their own project
-	resp = newUserClient.MakeRequest(t, "GET", fmt.Sprintf("/projects/%d", userProjectID), nil)
-	newUserClient.AssertSuccess(t, resp)
-	var fetchedUserProject map[string]interface{}
-	newUserClient.ParseJSON(t, resp, &fetchedUserProject)
-	require.Equal(t, userProjectData["name"], fetchedUserProject["name"])
-
-	// Admin should not be able to access user's project
+	// Admin should be able to access user's project
 	resp = adminClient.MakeRequest(t, "GET", fmt.Sprintf("/projects/%d", userProjectID), nil)
-	require.Equal(t, http.StatusNotFound, resp.StatusCode)
-
-	// Admin should only see their own projects in list
-	resp = adminClient.MakeRequest(t, "GET", "/projects", nil)
 	adminClient.AssertSuccess(t, resp)
-	var adminProjects []map[string]interface{}
-	adminClient.ParseJSON(t, resp, &adminProjects)
-
-	// Should only see admin's project, not user's project
-	adminProjectFound := false
-	for _, p := range adminProjects {
-		if int(p["id"].(float64)) == adminProjectID {
-			adminProjectFound = true
-		}
-		if int(p["id"].(float64)) == userProjectID {
-			t.Errorf("Admin should not see user's project in their list")
-		}
-	}
-	require.True(t, adminProjectFound, "Admin should see their own project")
-
-	// User should only see their own projects in list
-	resp = newUserClient.MakeRequest(t, "GET", "/projects", nil)
-	newUserClient.AssertSuccess(t, resp)
-	var userProjects []map[string]interface{}
-	newUserClient.ParseJSON(t, resp, &userProjects)
-
-	// Should only see user's project, not admin's project
-	userProjectFound := false
-	for _, p := range userProjects {
-		if int(p["id"].(float64)) == userProjectID {
-			userProjectFound = true
-		}
-		if int(p["id"].(float64)) == adminProjectID {
-			t.Errorf("User should not see admin's project in their list")
-		}
-	}
-	require.True(t, userProjectFound, "User should see their own project")
+	var fetchedUserProject map[string]interface{}
+	adminClient.ParseJSON(t, resp, &fetchedUserProject)
+	require.Equal(t, userProjectData["name"], fetchedUserProject["name"])
 
 	// Clean up - delete the projects
 	resp = adminClient.MakeRequest(t, "DELETE", fmt.Sprintf("/projects/%d", adminProjectID), nil)
@@ -244,16 +242,19 @@ func TestProjectUserIsolation(t *testing.T) {
 // - Only the provided fields are updated (partial updates)
 // - Unspecified fields remain unchanged
 // - Multiple partial updates work correctly
-// - Array fields (languages, build_commands) can be updated independently
+// - Array fields (languages) can be updated independently
 func TestProjectPartialUpdate(t *testing.T) {
 	adminClient := LoginAsAdmin(t)
 
 	// Create a new project
 	projectData := map[string]interface{}{
-		"name":          "Original Project",
-		"repo_url":      "https://github.com/original/docs",
-		"languages":     []string{"en", "es"},
-		"build_commands": []string{"npm install", "npm run build"},
+		"name":           "Original Project",
+		"doc_url":        "https://example.com/original",
+		"repo_url":       "https://github.com/original/docs",
+		"languages":      []string{"en", "es"},
+		"build_command":  "npm install",
+		"export_command": "npm run export",
+		"preview_command": "npm run preview",
 	}
 
 	resp := adminClient.MakeRequest(t, "POST", "/projects", projectData)
@@ -270,9 +271,12 @@ func TestProjectPartialUpdate(t *testing.T) {
 	var updatedProject map[string]interface{}
 	adminClient.ParseJSON(t, resp, &updatedProject)
 	require.Equal(t, "Updated Name Only", updatedProject["name"])
-	require.Equal(t, projectData["repo_url"], updatedProject["repo_url"]) // Should remain unchanged
+	require.Equal(t, projectData["doc_url"], updatedProject["doc_url"]) // Should remain unchanged
+	require.Equal(t, projectData["repo_url"], updatedProject["repo_url"])
 	require.Equal(t, projectData["languages"], interfaceSliceToStringSlice(updatedProject["languages"].([]interface{})))
-	require.Equal(t, projectData["build_commands"], interfaceSliceToStringSlice(updatedProject["build_commands"].([]interface{})))
+	require.Equal(t, projectData["build_command"], updatedProject["build_command"])
+	require.Equal(t, projectData["export_command"], updatedProject["export_command"])
+	require.Equal(t, projectData["preview_command"], updatedProject["preview_command"])
 
 	// Update only languages
 	resp = adminClient.MakeRequest(t, "PUT", fmt.Sprintf("/projects/%d", projectID), map[string]interface{}{
@@ -282,8 +286,11 @@ func TestProjectPartialUpdate(t *testing.T) {
 	adminClient.ParseJSON(t, resp, &updatedProject)
 	require.Equal(t, "Updated Name Only", updatedProject["name"]) // Should remain unchanged
 	require.Equal(t, []string{"en", "es", "fr", "de"}, interfaceSliceToStringSlice(updatedProject["languages"].([]interface{})))
+	require.Equal(t, projectData["doc_url"], updatedProject["doc_url"])
 	require.Equal(t, projectData["repo_url"], updatedProject["repo_url"])
-	require.Equal(t, projectData["build_commands"], interfaceSliceToStringSlice(updatedProject["build_commands"].([]interface{})))
+	require.Equal(t, projectData["build_command"], updatedProject["build_command"])
+	require.Equal(t, projectData["export_command"], updatedProject["export_command"])
+	require.Equal(t, projectData["preview_command"], updatedProject["preview_command"])
 
 	// Clean up
 	resp = adminClient.MakeRequest(t, "DELETE", fmt.Sprintf("/projects/%d", projectID), nil)
@@ -292,7 +299,7 @@ func TestProjectPartialUpdate(t *testing.T) {
 
 // TestProjectValidation tests input validation and error handling for project endpoints.
 // It validates that the API properly rejects invalid requests and returns appropriate errors:
-// - Creating projects with missing required fields (name, repo_url) returns 400 Bad Request
+// - Creating projects with missing required fields (name, doc_url, repo_url, build_command) returns 400 Bad Request
 // - Creating projects with empty required fields returns 400 Bad Request
 // - Accessing non-existent projects returns 404 Not Found
 // - Updating non-existent projects returns 404 Not Found
@@ -303,16 +310,48 @@ func TestProjectValidation(t *testing.T) {
 	// Test creating project with missing required fields
 	resp := adminClient.MakeRequest(t, "POST", "/projects", map[string]interface{}{
 		"name": "Test Project",
-		// Missing repo_url
+		// Missing doc_url, repo_url, build_command
 		"languages": []string{"en"},
 	})
 	require.Equal(t, http.StatusBadRequest, resp.StatusCode)
 
 	// Test creating project with empty name
 	resp = adminClient.MakeRequest(t, "POST", "/projects", map[string]interface{}{
-		"name":     "",
-		"repo_url": "https://github.com/test/docs",
-		"languages": []string{"en"},
+		"name":          "",
+		"doc_url":       "https://example.com/docs",
+		"repo_url":      "https://github.com/test/docs",
+		"build_command": "npm run build",
+		"languages":     []string{"en"},
+	})
+	require.Equal(t, http.StatusBadRequest, resp.StatusCode)
+
+	// Test creating project with empty doc_url
+	resp = adminClient.MakeRequest(t, "POST", "/projects", map[string]interface{}{
+		"name":          "Test Project",
+		"doc_url":       "",
+		"repo_url":      "https://github.com/test/docs",
+		"build_command": "npm run build",
+		"languages":     []string{"en"},
+	})
+	require.Equal(t, http.StatusBadRequest, resp.StatusCode)
+
+	// Test creating project with empty repo_url
+	resp = adminClient.MakeRequest(t, "POST", "/projects", map[string]interface{}{
+		"name":          "Test Project",
+		"doc_url":       "https://example.com/docs",
+		"repo_url":      "",
+		"build_command": "npm run build",
+		"languages":     []string{"en"},
+	})
+	require.Equal(t, http.StatusBadRequest, resp.StatusCode)
+
+	// Test creating project with empty build_command
+	resp = adminClient.MakeRequest(t, "POST", "/projects", map[string]interface{}{
+		"name":          "Test Project",
+		"doc_url":       "https://example.com/docs",
+		"repo_url":      "https://github.com/test/docs",
+		"build_command": "",
+		"languages":     []string{"en"},
 	})
 	require.Equal(t, http.StatusBadRequest, resp.StatusCode)
 
