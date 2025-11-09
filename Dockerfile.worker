@@ -7,7 +7,7 @@ RUN go mod download
 
 COPY . .
 
-RUN go build -o main ./cmd/project
+RUN go build -o main ./cmd/worker
 
 FROM alpine:latest
 
@@ -16,7 +16,5 @@ RUN apk --no-cache add ca-certificates
 WORKDIR /root/
 
 COPY --from=builder /app/main .
-
-EXPOSE 80
 
 CMD ["./main"]
