@@ -18,6 +18,13 @@ type Config struct {
 	LoggingServiceURL    string
 	BuildPort            string
 	BuildServiceURL      string
+	AnalyticsPort        string
+	AnalyticsServiceURL  string
+	KafkaBrokers         string
+	InfluxDBURL          string
+	InfluxDBToken        string
+	InfluxDBOrg          string
+	InfluxDBBucket       string
 }
 
 func Load() *Config {
@@ -35,6 +42,13 @@ func Load() *Config {
 		LoggingServiceURL:    getEnv("LOGGING_SERVICE_URL", "http://localhost:80"),
 		BuildPort:            getEnv("BUILD_PORT", "80"),
 		BuildServiceURL:      getEnv("BUILD_SERVICE_URL", "http://localhost:80"),
+		AnalyticsPort:        getEnv("ANALYTICS_PORT", "80"),
+		AnalyticsServiceURL:  getEnv("ANALYTICS_SERVICE_URL", "http://localhost:80"),
+		KafkaBrokers:         getEnv("KAFKA_BROKERS", "localhost:9092"),
+		InfluxDBURL:          getEnv("INFLUXDB_URL", "http://localhost:8086"),
+		InfluxDBToken:        getEnv("INFLUXDB_TOKEN", "my-super-secret-auth-token"),
+		InfluxDBOrg:          getEnv("INFLUXDB_ORG", "xeodocs"),
+		InfluxDBBucket:       getEnv("INFLUXDB_BUCKET", "analytics"),
 	}
 }
 

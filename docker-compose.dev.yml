@@ -31,6 +31,58 @@ services:
       timeout: 5s
       retries: 5
 
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.4.0
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    ports:
+      - "2181:2181"
+    volumes:
+      - zookeeper_data:/var/lib/zookeeper/data
+      - zookeeper_logs:/var/lib/zookeeper/log
+
+  kafka:
+    image: confluentinc/cp-kafka:7.4.0
+    depends_on:
+      - zookeeper
+    ports:
+      - "9092:9092"
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_INTERNAL:PLAINTEXT
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092,PLAINTEXT_INTERNAL://kafka:29092
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+    volumes:
+      - kafka_data:/var/lib/kafka/data
+    healthcheck:
+      test: ["CMD-SHELL", "kafka-broker-api-versions --bootstrap-server localhost:9092"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  influxdb:
+    image: influxdb:2.7
+    environment:
+      DOCKER_INFLUXDB_INIT_MODE: setup
+      DOCKER_INFLUXDB_INIT_USERNAME: admin
+      DOCKER_INFLUXDB_INIT_PASSWORD: password
+      DOCKER_INFLUXDB_INIT_ORG: xeodocs
+      DOCKER_INFLUXDB_INIT_BUCKET: analytics
+      DOCKER_INFLUXDB_INIT_ADMIN_TOKEN: my-super-secret-auth-token
+    ports:
+      - "8086:8086"
+    volumes:
+      - influxdb_data:/var/lib/influxdb2
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8086/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
   auth:
     build:
       context: .
@@ -102,6 +154,27 @@ services:
     volumes:
       - .:/app
 
+  analytics:
+    build:
+      context: .
+      dockerfile: Dockerfile.analytics
+    environment:
+      DATABASE_URL: postgres://user:password@db/xeodocs_db?sslmode=disable
+      PORT: 80
+      JWT_SECRET: your-secret-key
+      KAFKA_BROKERS: kafka:29092
+      INFLUXDB_URL: http://influxdb:8086
+      INFLUXDB_TOKEN: my-super-secret-auth-token
+      INFLUXDB_ORG: xeodocs
+      INFLUXDB_BUCKET: analytics
+    depends_on:
+      kafka:
+        condition: service_healthy
+      influxdb:
+        condition: service_healthy
+    volumes:
+      - .:/app
+
   scheduler:
     build:
       context: .
@@ -129,11 +202,13 @@ services:
       PROJECT_SERVICE_URL: http://project:80
       LOGGING_SERVICE_URL: http://logging:80
       BUILD_SERVICE_URL: http://build:80
+      ANALYTICS_SERVICE_URL: http://analytics:80
     depends_on:
       - auth
       - project
       - logging
       - build
+      - analytics
     volumes:
       - .:/app
 
@@ -141,3 +216,7 @@ volumes:
   db_data:
   rabbitmq_data:
   repos:
+  zookeeper_data:
+  zookeeper_logs:
+  kafka_data:
+  influxdb_data:
