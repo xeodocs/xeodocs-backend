@@ -102,21 +102,21 @@ services:
     volumes:
       - .:/app
 
-  build:
+  scheduler:
     build:
       context: .
-      dockerfile: Dockerfile.build
+      dockerfile: Dockerfile.scheduler
     environment:
       DATABASE_URL: postgres://user:password@db/xeodocs_db?sslmode=disable
-      BUILD_PORT: 80
+      RABBITMQ_URL: amqp://guest:guest@rabbitmq:5672/
       JWT_SECRET: your-secret-key
+      PROJECT_SERVICE_URL: http://project:80
+      LOGGING_SERVICE_URL: http://logging:80
     depends_on:
-      db:
+      rabbitmq:
         condition: service_healthy
     volumes:
       - .:/app
-      - repos:/repos
-
   gateway:
     build:
       context: .

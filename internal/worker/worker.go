@@ -29,7 +29,7 @@ func Start(cfg *config.Config) {
 	defer ch.Close()
 
 	// Declare queues
-	queues := []string{"clone_repo", "translate_files", "build_task"}
+	queues := []string{"clone_repo", "translate_files", "sync_repo", "build_task"}
 	for _, queue := range queues {
 		_, err := ch.QueueDeclare(
 			queue, // name

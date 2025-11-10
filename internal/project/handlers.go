@@ -84,13 +84,21 @@ func ListProjectsHandler(cfg *config.Config) http.HandlerFunc {
 			return
 		}
 
+		// For simplicity, no actual pagination yet, just return all
+		response := map[string]interface{}{
+			"projects": projects,
+			"total":    len(projects),
+			"page":     1,
+			"limit":    len(projects),
+		}
+
 		// Log the project listing
 		userID := getUserIDFromContext(r.Context())
 		message := "Projects listed"
 		logging.LogActivity(cfg.LoggingServiceURL, "projects_listed", message, userID, nil, "info")
 
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(projects)
+		json.NewEncoder(w).Encode(response)
 	}
 }
 
