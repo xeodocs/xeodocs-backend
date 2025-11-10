@@ -14,6 +14,7 @@ INSERT INTO roles (name, description) VALUES ('viewer', 'Read-only access') ON C
 CREATE TABLE IF NOT EXISTS users (
     id SERIAL PRIMARY KEY,
     username VARCHAR(255) UNIQUE NOT NULL,
+    email VARCHAR(255) UNIQUE NOT NULL,
     password VARCHAR(255) NOT NULL,
     role_id INTEGER,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -22,8 +23,9 @@ CREATE TABLE IF NOT EXISTS users (
 
 -- Insert default admin user (password: 'tempadmin123' hashed with bcrypt)
 -- Note: Change this password after first login
-INSERT INTO users (username, password, role_id, created_at) VALUES (
+INSERT INTO users (username, email, password, role_id, created_at) VALUES (
     'admin',
+    'admin@xeodocs.com',
     '$2a$10$EyXgHjDjZdGXkdQzI5atluZiAOkLncOyFMf0ftHaY/8kDvY0iCrpS', -- bcrypt hash for 'tempadmin123'
     1, -- admin role id
     CURRENT_TIMESTAMP
