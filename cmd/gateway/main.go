@@ -21,6 +21,7 @@ func main() {
 	mux.HandleFunc("/v1/projects/", gateway.ProjectProxyHandler(cfg))
 	mux.HandleFunc("/v1/logs", gateway.LoggingProxyHandler(cfg))
 	mux.HandleFunc("/v1/logs/", gateway.LoggingProxyHandler(cfg))
+	mux.HandleFunc("/v1/build/", gateway.BuildProxyHandler(cfg))
 
 	log.Printf("Starting Gateway Service on port %s", cfg.GatewayPort)
 	log.Fatal(http.ListenAndServe(":"+cfg.GatewayPort, mux))

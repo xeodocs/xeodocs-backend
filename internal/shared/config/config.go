@@ -16,6 +16,8 @@ type Config struct {
 	RepositoryPort       string
 	RepositoryServiceURL string
 	LoggingServiceURL    string
+	BuildPort            string
+	BuildServiceURL      string
 }
 
 func Load() *Config {
@@ -31,6 +33,8 @@ func Load() *Config {
 		RepositoryPort:       getEnv("REPOSITORY_PORT", "80"),
 		RepositoryServiceURL: getEnv("REPOSITORY_SERVICE_URL", "http://localhost:80"),
 		LoggingServiceURL:    getEnv("LOGGING_SERVICE_URL", "http://localhost:80"),
+		BuildPort:            getEnv("BUILD_PORT", "80"),
+		BuildServiceURL:      getEnv("BUILD_SERVICE_URL", "http://localhost:80"),
 	}
 }
 

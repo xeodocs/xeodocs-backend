@@ -108,6 +108,8 @@ func processTask(cfg *config.Config, task Task) {
 		handleSyncRepo(cfg, task.Payload)
 	case "delete_repo":
 		handleDeleteRepo(cfg, task.Payload)
+	case "build_task":
+		handleBuildTask(cfg, task.Payload)
 	default:
 		log.Printf("Unknown task type: %s", task.Type)
 	}
@@ -215,6 +217,43 @@ func handleDeleteRepo(cfg *config.Config, payload map[string]interface{}) {
 	}
 }
 
+func handleBuildTask(cfg *config.Config, payload map[string]interface{}) {
+	projectIDFloat, ok1 := payload["projectId"].(float64)
+	buildType, ok2 := payload["buildType"].(string) // "build", "export", or "preview"
+
+	if !ok1 || !ok2 {
+		log.Printf("Invalid payload for build_task: %v", payload)
+		return
+	}
+
+	projectID := int(projectIDFloat)
+
+	req := map[string]interface{}{
+		"projectId": projectID,
+	}
+
+	var endpoint string
+	switch buildType {
+	case "build":
+		endpoint = "/internal/build"
+	case "export":
+		endpoint = "/internal/export"
+	case "preview":
+		endpoint = "/internal/preview"
+	default:
+		log.Printf("Unknown build type: %s", buildType)
+		return
+	}
+
+	if err := callBuildService(cfg, http.MethodPost, endpoint, req); err != nil {
+		log.Printf("Failed to execute %s: %v", buildType, err)
+	} else {
+		// Log successful build task
+		message := fmt.Sprintf("Worker successfully executed %s for project %d", buildType, projectID)
+		logging.LogActivity(cfg.LoggingServiceURL, "worker_build_task_completed", message, nil, &projectID, "info")
+	}
+}
+
 func callRepositoryService(cfg *config.Config, method, endpoint string, req map[string]interface{}) error {
 	url := cfg.RepositoryServiceURL + endpoint
 
@@ -251,6 +290,28 @@ func callRepositoryService(cfg *config.Config, method, endpoint string, req map[
 
 	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusNoContent {
 		return fmt.Errorf("repository service returned status %d", resp.StatusCode)
+	}
+
+	log.Printf("Successfully called %s %s", method, endpoint)
+	return nil
+}
+
+func callBuildService(cfg *config.Config, method, endpoint string, req map[string]interface{}) error {
+	url := cfg.BuildServiceURL + endpoint
+
+	jsonData, err := json.Marshal(req)
+	if err != nil {
+		return err
+	}
+
+	resp, err := http.Post(url, "application/json", bytes.NewBuffer(jsonData))
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("build service returned status %d", resp.StatusCode)
 	}
 
 	log.Printf("Successfully called %s %s", method, endpoint)
