@@ -9,6 +9,7 @@ import (
 
 	"github.com/rabbitmq/amqp091-go"
 	"github.com/xeodocs/xeodocs-backend/internal/shared/config"
+	"github.com/xeodocs/xeodocs-backend/internal/shared/logging"
 )
 
 // Start initializes the worker service and begins consuming messages from RabbitMQ
@@ -94,6 +95,10 @@ func consumeQueue(cfg *config.Config, ch *amqp091.Channel, queueName string) {
 func processTask(cfg *config.Config, task Task) {
 	log.Printf("Processing task type: %s with payload: %v", task.Type, task.Payload)
 
+	// Log task processing start
+	message := fmt.Sprintf("Worker processing task: %s", task.Type)
+	logging.LogActivity(cfg.LoggingServiceURL, "task_processing", message, nil, nil, "info")
+
 	switch task.Type {
 	case "clone_repo":
 		handleCloneRepo(cfg, task.Payload)
@@ -126,6 +131,10 @@ func handleCloneRepo(cfg *config.Config, payload map[string]interface{}) {
 
 	if err := callRepositoryService(cfg, http.MethodPost, "/internal/clone-repo", req); err != nil {
 		log.Printf("Failed to clone repo: %v", err)
+	} else {
+		// Log successful repo cloning
+		message := fmt.Sprintf("Worker successfully cloned repo for project %d", projectID)
+		logging.LogActivity(cfg.LoggingServiceURL, "worker_repo_cloned", message, nil, &projectID, "info")
 	}
 }
 
@@ -153,6 +162,10 @@ func handleCreateLanguageCopies(cfg *config.Config, payload map[string]interface
 
 	if err := callRepositoryService(cfg, http.MethodPost, "/internal/create-language-copies", req); err != nil {
 		log.Printf("Failed to create language copies: %v", err)
+	} else {
+		// Log successful language copies
+		message := fmt.Sprintf("Worker successfully created language copies for project %d", projectID)
+		logging.LogActivity(cfg.LoggingServiceURL, "worker_language_copies_created", message, nil, &projectID, "info")
 	}
 }
 
@@ -172,6 +185,10 @@ func handleSyncRepo(cfg *config.Config, payload map[string]interface{}) {
 
 	if err := callRepositoryService(cfg, http.MethodPut, "/internal/sync-repo", req); err != nil {
 		log.Printf("Failed to sync repo: %v", err)
+	} else {
+		// Log successful repo sync
+		message := fmt.Sprintf("Worker successfully synced repo for project %d", projectID)
+		logging.LogActivity(cfg.LoggingServiceURL, "worker_repo_synced", message, nil, &projectID, "info")
 	}
 }
 
@@ -191,6 +208,10 @@ func handleDeleteRepo(cfg *config.Config, payload map[string]interface{}) {
 
 	if err := callRepositoryService(cfg, http.MethodDelete, "/internal/delete-repo", req); err != nil {
 		log.Printf("Failed to delete repo: %v", err)
+	} else {
+		// Log successful repo deletion
+		message := fmt.Sprintf("Worker successfully deleted repo for project %d", projectID)
+		logging.LogActivity(cfg.LoggingServiceURL, "worker_repo_deleted", message, nil, &projectID, "info")
 	}
 }
 

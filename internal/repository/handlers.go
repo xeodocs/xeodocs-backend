@@ -10,6 +10,7 @@ import (
 
 	"github.com/go-git/go-git/v5"
 	"github.com/xeodocs/xeodocs-backend/internal/shared/config"
+	"github.com/xeodocs/xeodocs-backend/internal/shared/logging"
 )
 
 func CloneRepoHandler(cfg *config.Config) http.HandlerFunc {
@@ -42,6 +43,10 @@ func CloneRepoHandler(cfg *config.Config) http.HandlerFunc {
 			return
 		}
 
+		// Log the repository cloning
+		message := fmt.Sprintf("Repository cloned: %s for project %d", req.RepoURL, req.ProjectID)
+		logging.LogActivity(cfg.LoggingServiceURL, "repo_cloned", message, nil, &req.ProjectID, "info")
+
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(RepoResponse{Success: true, Message: "Repository cloned successfully"})
 	}
@@ -69,6 +74,10 @@ func CreateLanguageCopiesHandler(cfg *config.Config) http.HandlerFunc {
 				return
 			}
 		}
+
+		// Log the language copies creation
+		message := fmt.Sprintf("Language copies created for project %d: %v", req.ProjectID, req.Languages)
+		logging.LogActivity(cfg.LoggingServiceURL, "language_copies_created", message, nil, &req.ProjectID, "info")
 
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(RepoResponse{Success: true, Message: "Language copies created successfully"})
@@ -110,6 +119,10 @@ func SyncRepoHandler(cfg *config.Config) http.HandlerFunc {
 			return
 		}
 
+		// Log the repository sync
+		message := fmt.Sprintf("Repository synced for project %d", req.ProjectID)
+		logging.LogActivity(cfg.LoggingServiceURL, "repo_synced", message, nil, &req.ProjectID, "info")
+
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(RepoResponse{Success: true, Message: "Repository synced successfully"})
 	}
@@ -134,6 +147,10 @@ func DeleteRepoHandler(cfg *config.Config) http.HandlerFunc {
 			http.Error(w, "Failed to delete repository", http.StatusInternalServerError)
 			return
 		}
+
+		// Log the repository deletion
+		message := fmt.Sprintf("Repository deleted for project %d", req.ProjectID)
+		logging.LogActivity(cfg.LoggingServiceURL, "repo_deleted", message, nil, &req.ProjectID, "info")
 
 		w.WriteHeader(http.StatusNoContent)
 	}

@@ -1,13 +1,25 @@
 package project
 
 import (
+	"context"
 	"encoding/json"
 	"log"
 	"net/http"
 	"strconv"
 
+	"github.com/xeodocs/xeodocs-backend/internal/shared/auth"
 	"github.com/xeodocs/xeodocs-backend/internal/shared/config"
+	"github.com/xeodocs/xeodocs-backend/internal/shared/logging"
 )
+
+// getUserIDFromContext extracts user ID from request context
+func getUserIDFromContext(ctx context.Context) *int {
+	claims, ok := ctx.Value("claims").(*auth.Claims)
+	if !ok {
+		return nil
+	}
+	return &claims.UserID
+}
 
 func CreateProjectHandler(cfg *config.Config) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -47,6 +59,11 @@ func CreateProjectHandler(cfg *config.Config) http.HandlerFunc {
 			return
 		}
 
+		// Log the project creation
+		userID := getUserIDFromContext(r.Context())
+		message := "Project created: " + project.Name
+		logging.LogActivity(cfg.LoggingServiceURL, "project_created", message, userID, &project.ID, "info")
+
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusCreated)
 		json.NewEncoder(w).Encode(project)
@@ -66,6 +83,11 @@ func ListProjectsHandler(cfg *config.Config) http.HandlerFunc {
 			http.Error(w, "Internal server error", http.StatusInternalServerError)
 			return
 		}
+
+		// Log the project listing
+		userID := getUserIDFromContext(r.Context())
+		message := "Projects listed"
+		logging.LogActivity(cfg.LoggingServiceURL, "projects_listed", message, userID, nil, "info")
 
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(projects)
@@ -96,6 +118,11 @@ func GetProjectHandler(cfg *config.Config) http.HandlerFunc {
 			}
 			return
 		}
+
+		// Log the project retrieval
+		userID := getUserIDFromContext(r.Context())
+		message := "Project retrieved: " + project.Name
+		logging.LogActivity(cfg.LoggingServiceURL, "project_retrieved", message, userID, &project.ID, "info")
 
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(project)
@@ -133,6 +160,11 @@ func UpdateProjectHandler(cfg *config.Config) http.HandlerFunc {
 			return
 		}
 
+		// Log the project update
+		userID := getUserIDFromContext(r.Context())
+		message := "Project updated: " + project.Name
+		logging.LogActivity(cfg.LoggingServiceURL, "project_updated", message, userID, &project.ID, "info")
+
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(project)
 	}
@@ -162,6 +194,11 @@ func DeleteProjectHandler(cfg *config.Config) http.HandlerFunc {
 			}
 			return
 		}
+
+		// Log the project deletion
+		userID := getUserIDFromContext(r.Context())
+		message := "Project deleted with ID: " + strconv.Itoa(id)
+		logging.LogActivity(cfg.LoggingServiceURL, "project_deleted", message, userID, &id, "info")
 
 		w.WriteHeader(http.StatusNoContent)
 	}

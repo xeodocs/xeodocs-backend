@@ -10,7 +10,17 @@ import (
 
 	"github.com/xeodocs/xeodocs-backend/internal/shared/auth"
 	"github.com/xeodocs/xeodocs-backend/internal/shared/config"
+	"github.com/xeodocs/xeodocs-backend/internal/shared/logging"
 )
+
+// getUserIDFromContext extracts user ID from request context
+func getUserIDFromContext(ctx context.Context) *int {
+	claims, ok := ctx.Value("claims").(*auth.Claims)
+	if !ok {
+		return nil
+	}
+	return &claims.UserID
+}
 
 func JWTMiddleware(cfg *config.Config, requiredRole string) func(http.HandlerFunc) http.HandlerFunc {
 	return func(next http.HandlerFunc) http.HandlerFunc {
@@ -73,6 +83,10 @@ func RegisterHandler(cfg *config.Config) http.HandlerFunc {
 			return
 		}
 
+		// Log the user registration
+		message := "User registered: " + user.Username
+		logging.LogActivity(cfg.LoggingServiceURL, "user_registered", message, &user.ID, nil, "info")
+
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(map[string]string{"token": token})
 	}
@@ -109,6 +123,10 @@ func LoginHandler(cfg *config.Config) http.HandlerFunc {
 			return
 		}
 
+		// Log the user login
+		message := "User logged in: " + user.Username
+		logging.LogActivity(cfg.LoggingServiceURL, "user_login", message, &user.ID, nil, "info")
+
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(map[string]string{"token": token})
 	}
@@ -135,6 +153,11 @@ func ChangePasswordHandler(cfg *config.Config) http.HandlerFunc {
 			return
 		}
 
+		// Log the password change
+		userID := getUserIDFromContext(r.Context())
+		message := "Password changed for user ID: " + strconv.Itoa(claims.UserID)
+		logging.LogActivity(cfg.LoggingServiceURL, "password_changed", message, userID, nil, "info")
+
 		w.WriteHeader(http.StatusNoContent)
 	}
 }
@@ -154,6 +177,11 @@ func ListUsersHandler(cfg *config.Config) http.HandlerFunc {
 			http.Error(w, "Internal server error", http.StatusInternalServerError)
 			return
 		}
+
+		// Log the user listing
+		userID := getUserIDFromContext(r.Context())
+		message := "Users listed"
+		logging.LogActivity(cfg.LoggingServiceURL, "users_listed", message, userID, nil, "info")
 
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(users)
@@ -184,6 +212,11 @@ func GetUserHandler(cfg *config.Config) http.HandlerFunc {
 			}
 			return
 		}
+
+		// Log the user retrieval
+		userID := getUserIDFromContext(r.Context())
+		message := "User retrieved: " + user.Username
+		logging.LogActivity(cfg.LoggingServiceURL, "user_retrieved", message, userID, nil, "info")
 
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(user)
@@ -217,6 +250,11 @@ func UpdateUserHandler(cfg *config.Config) http.HandlerFunc {
 			return
 		}
 
+		// Log the user update
+		userID := getUserIDFromContext(r.Context())
+		message := "User updated: " + user.Username
+		logging.LogActivity(cfg.LoggingServiceURL, "user_updated", message, userID, nil, "info")
+
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(user)
 	}
@@ -242,6 +280,11 @@ func DeleteUserHandler(cfg *config.Config) http.HandlerFunc {
 			http.Error(w, "Internal server error", http.StatusInternalServerError)
 			return
 		}
+
+		// Log the user deletion
+		userID := getUserIDFromContext(r.Context())
+		message := "User deleted with ID: " + strconv.Itoa(id)
+		logging.LogActivity(cfg.LoggingServiceURL, "user_deleted", message, userID, nil, "info")
 
 		w.WriteHeader(http.StatusNoContent)
 	}
@@ -269,6 +312,11 @@ func CreateRoleHandler(cfg *config.Config) http.HandlerFunc {
 			return
 		}
 
+		// Log the role creation
+		userID := getUserIDFromContext(r.Context())
+		message := "Role created: " + role.Name
+		logging.LogActivity(cfg.LoggingServiceURL, "role_created", message, userID, nil, "info")
+
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(role)
 	}
@@ -287,6 +335,11 @@ func ListRolesHandler(cfg *config.Config) http.HandlerFunc {
 			http.Error(w, "Internal server error", http.StatusInternalServerError)
 			return
 		}
+
+		// Log the role listing
+		userID := getUserIDFromContext(r.Context())
+		message := "Roles listed"
+		logging.LogActivity(cfg.LoggingServiceURL, "roles_listed", message, userID, nil, "info")
 
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(roles)
@@ -317,6 +370,11 @@ func GetRoleHandler(cfg *config.Config) http.HandlerFunc {
 			}
 			return
 		}
+
+		// Log the role retrieval
+		userID := getUserIDFromContext(r.Context())
+		message := "Role retrieved: " + role.Name
+		logging.LogActivity(cfg.LoggingServiceURL, "role_retrieved", message, userID, nil, "info")
 
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(role)
@@ -350,6 +408,11 @@ func UpdateRoleHandler(cfg *config.Config) http.HandlerFunc {
 			return
 		}
 
+		// Log the role update
+		userID := getUserIDFromContext(r.Context())
+		message := "Role updated: " + role.Name
+		logging.LogActivity(cfg.LoggingServiceURL, "role_updated", message, userID, nil, "info")
+
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(role)
 	}
@@ -375,6 +438,11 @@ func DeleteRoleHandler(cfg *config.Config) http.HandlerFunc {
 			http.Error(w, "Internal server error", http.StatusInternalServerError)
 			return
 		}
+
+		// Log the role deletion
+		userID := getUserIDFromContext(r.Context())
+		message := "Role deleted with ID: " + strconv.Itoa(id)
+		logging.LogActivity(cfg.LoggingServiceURL, "role_deleted", message, userID, nil, "info")
 
 		w.WriteHeader(http.StatusNoContent)
 	}

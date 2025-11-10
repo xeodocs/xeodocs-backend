@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/xeodocs/xeodocs-backend/internal/shared/config"
+	"github.com/xeodocs/xeodocs-backend/internal/shared/logging"
 )
 
 func AuthProxyHandler(cfg *config.Config) http.HandlerFunc {
@@ -31,6 +32,10 @@ func AuthProxyHandler(cfg *config.Config) http.HandlerFunc {
 			w.WriteHeader(http.StatusOK)
 			return
 		}
+
+		// Log the incoming request
+		message := "Gateway received request: " + r.Method + " " + r.URL.Path
+		logging.LogActivity(cfg.LoggingServiceURL, "gateway_request", message, nil, nil, "info")
 
 		// For now, no JWT validation for auth endpoints
 		proxy.ServeHTTP(w, r)
@@ -60,6 +65,10 @@ func ProjectProxyHandler(cfg *config.Config) http.HandlerFunc {
 			return
 		}
 
+		// Log the incoming request
+		message := "Gateway received request: " + r.Method + " " + r.URL.Path
+		logging.LogActivity(cfg.LoggingServiceURL, "gateway_request", message, nil, nil, "info")
+
 		proxy.ServeHTTP(w, r)
 	}
 }
@@ -86,6 +95,10 @@ func LoggingProxyHandler(cfg *config.Config) http.HandlerFunc {
 			w.WriteHeader(http.StatusOK)
 			return
 		}
+
+		// Log the incoming request
+		message := "Gateway received request: " + r.Method + " " + r.URL.Path
+		logging.LogActivity(cfg.LoggingServiceURL, "gateway_request", message, nil, nil, "info")
 
 		proxy.ServeHTTP(w, r)
 	}
