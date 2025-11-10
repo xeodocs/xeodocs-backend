@@ -5,22 +5,22 @@ import (
 )
 
 type Config struct {
-	DatabaseURL        string
-	JWTSecret          string
-	Port               string // for auth
-	GatewayPort        string
-	AuthServiceURL     string
-	ProjectPort        string
-	ProjectServiceURL  string
-	RabbitMQURL        string
-	RepositoryPort     string
+	DatabaseURL          string
+	JWTSecret            string
+	Port                 string // for auth
+	GatewayPort          string
+	AuthServiceURL       string
+	ProjectPort          string
+	ProjectServiceURL    string
+	RabbitMQURL          string
+	RepositoryPort       string
 	RepositoryServiceURL string
-	LoggingServiceURL  string
+	LoggingServiceURL    string
 }
 
 func Load() *Config {
 	return &Config{
-		DatabaseURL:          getEnv("DATABASE_URL", "postgres://user:password@localhost/xeodocs_auth?sslmode=disable"),
+		DatabaseURL:          getEnv("DATABASE_URL", "postgres://user:password@localhost/xeodocs_db?sslmode=disable"),
 		JWTSecret:            getEnv("JWT_SECRET", "your-secret-key"),
 		Port:                 getEnv("PORT", "80"),
 		GatewayPort:          getEnv("GATEWAY_PORT", "12020"),
