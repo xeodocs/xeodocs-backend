@@ -83,6 +83,20 @@ services:
       - .:/app
       - repos:/repos
 
+  logging:
+    build:
+      context: .
+      dockerfile: Dockerfile.logging
+    environment:
+      DATABASE_URL: postgres://user:password@db/xeodocs_auth?sslmode=disable
+      PORT: 80
+      JWT_SECRET: your-secret-key
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - .:/app
+
   gateway:
     build:
       context: .
@@ -93,9 +107,11 @@ services:
       GATEWAY_PORT: 12020
       AUTH_SERVICE_URL: http://auth:80
       PROJECT_SERVICE_URL: http://project:80
+      LOGGING_SERVICE_URL: http://logging:80
     depends_on:
       - auth
       - project
+      - logging
     volumes:
       - .:/app
 

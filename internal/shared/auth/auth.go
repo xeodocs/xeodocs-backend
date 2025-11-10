@@ -1,7 +1,10 @@
 package auth
 
 import (
+	"context"
 	"errors"
+	"net/http"
+	"strings"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
@@ -44,4 +47,39 @@ func ValidateJWT(tokenString string, cfg *config.Config) (*Claims, error) {
 	}
 
 	return nil, errors.New("invalid token")
+}
+
+// JWTMiddleware validates JWT tokens and enforces role-based access
+func JWTMiddleware(cfg *config.Config, requiredRole string) func(http.HandlerFunc) http.HandlerFunc {
+	return func(next http.HandlerFunc) http.HandlerFunc {
+		return func(w http.ResponseWriter, r *http.Request) {
+			authHeader := r.Header.Get("Authorization")
+			if authHeader == "" {
+				http.Error(w, "Authorization header required", http.StatusUnauthorized)
+				return
+			}
+
+			tokenString := strings.TrimPrefix(authHeader, "Bearer ")
+			if tokenString == authHeader {
+				http.Error(w, "Bearer token required", http.StatusUnauthorized)
+				return
+			}
+
+			claims, err := ValidateJWT(tokenString, cfg)
+			if err != nil {
+				http.Error(w, "Invalid token", http.StatusUnauthorized)
+				return
+			}
+
+			if requiredRole != "" && claims.RoleID != 1 {
+				http.Error(w, "Insufficient permissions", http.StatusForbidden)
+				return
+			}
+
+			// Add claims to request context
+			ctx := context.WithValue(r.Context(), "claims", claims)
+			r = r.WithContext(ctx)
+			next(w, r)
+		}
+	}
 }

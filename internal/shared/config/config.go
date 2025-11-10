@@ -15,6 +15,7 @@ type Config struct {
 	RabbitMQURL        string
 	RepositoryPort     string
 	RepositoryServiceURL string
+	LoggingServiceURL  string
 }
 
 func Load() *Config {
@@ -29,6 +30,7 @@ func Load() *Config {
 		RabbitMQURL:          getEnv("RABBITMQ_URL", "amqp://guest:guest@localhost:5672/"),
 		RepositoryPort:       getEnv("REPOSITORY_PORT", "80"),
 		RepositoryServiceURL: getEnv("REPOSITORY_SERVICE_URL", "http://localhost:80"),
+		LoggingServiceURL:    getEnv("LOGGING_SERVICE_URL", "http://localhost:80"),
 	}
 }
 
