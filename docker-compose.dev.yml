@@ -64,6 +64,22 @@ services:
       timeout: 5s
       retries: 5
 
+  kafka-ui:
+    image: provectuslabs/kafka-ui:latest
+    depends_on:
+      - kafka
+    ports:
+      - "8080:8080"
+    environment:
+      KAFKA_CLUSTERS_0_NAME: local
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:29092
+      KAFKA_CLUSTERS_0_ZOOKEEPER: zookeeper:2181
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8080 || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
   influxdb:
     image: influxdb:2.7
     environment:
@@ -147,6 +163,20 @@ services:
     environment:
       DATABASE_URL: postgres://user:password@db/xeodocs_db?sslmode=disable
       PORT: 80
+      JWT_SECRET: your-secret-key
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - .:/app
+
+  build:
+    build:
+      context: .
+      dockerfile: Dockerfile.build
+    environment:
+      DATABASE_URL: postgres://user:password@db/xeodocs_db?sslmode=disable
+      BUILD_PORT: 80
       JWT_SECRET: your-secret-key
     depends_on:
       db:
