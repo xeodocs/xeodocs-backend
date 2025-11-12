@@ -39,20 +39,39 @@ End-to-End tests validate the full workflow through HTTP requests to the API gat
 
 #### Running E2E Tests
 
-1. Start a brand new development stack:
+**Option 1: Run from Docker (Recommended for CI/testing internal endpoints)**
+
+1. Start the development stack:
    ```bash
-   docker-compose -f docker-compose.dev.yml down --volumes --rmi local
-   docker-compose -f docker-compose.dev.yml up --build -d
+   docker compose -f docker-compose.dev.yml up --build -d
    ```
 
-2. Run the E2E tests:
+2. Run the E2E tests in a container:
+   ```bash
+   docker compose -f docker-compose.dev.yml run --rm e2e
+   ```
+
+3. Stop the stack:
+   ```bash
+   docker compose -f docker-compose.dev.yml down --volumes --rmi local
+   ```
+
+**Option 2: Run from host (for gateway-only testing)**
+
+1. Start a brand new development stack:
+   ```bash
+   docker compose -f docker-compose.dev.yml down --volumes --rmi local
+   docker compose -f docker-compose.dev.yml up --build -d
+   ```
+
+2. Run the E2E tests from host:
    ```bash
    go test ./tests/e2e -v
    ```
 
 3. Stop the stack:
    ```bash
-   docker-compose -f docker-compose.dev.yml down --volumes --rmi local
+   docker compose -f docker-compose.dev.yml down --volumes --rmi local
    ```
 
 #### E2E Test Coverage

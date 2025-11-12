@@ -209,6 +209,30 @@ services:
         condition: service_healthy
     volumes:
       - .:/app
+  e2e:
+    build:
+      context: .
+      dockerfile: Dockerfile.e2e
+    environment:
+      GATEWAY_URL: http://gateway:12020/v1
+      AUTH_SERVICE_URL: http://auth:80
+      PROJECT_SERVICE_URL: http://project:80
+      LOGGING_SERVICE_URL: http://logging:80
+      BUILD_SERVICE_URL: http://build:80
+      ANALYTICS_SERVICE_URL: http://analytics:80
+      REPOSITORY_SERVICE_URL: http://repository:80
+    depends_on:
+      - gateway
+      - auth
+      - project
+      - logging
+      - build
+      - analytics
+      - repository
+    volumes:
+      - .:/app
+    networks:
+      - default
   gateway:
     build:
       context: .
