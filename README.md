@@ -67,3 +67,47 @@ Run unit tests for individual packages:
 ```bash
 go test ./...
 ```
+
+## Temporary Container Access (Docker)
+
+You can create a temporary TCP proxy to expose a container port (e.g., 5432 for PostgreSQL) from your host machine to the private Docker network without modifying `docker-compose.yml` or restarting your services. 
+
+This allows tools like pgAdmin (running on your host) to connect to `localhost:5432` as if the port were directly exposed.
+
+The approach uses a lightweight temporary container (based on Alpine Linux with `socat`) that joins your existing `xeodocs-internal-net` network. It listens on the host's port 5432 and forwards traffic to the `db` service (resolving via Docker's internal DNS). When you're done, just stop the container—it auto-removes with `--rm`.
+
+### Steps
+1. **Network name**: The network name is `xeodocs-internal-net`.
+
+2. **Start the temporary proxy**:
+   ```
+   docker run --rm -d \
+     --network xeodocs-internal-net \
+     -p 5432:5432 \
+     alpine/socat \
+     TCP-LISTEN:5432,fork \
+     TCP:db:5432
+   ```
+   - `--rm`: Auto-deletes the container when stopped.
+   - `-d`: Runs in the background.
+   - `-p 5432:5432`: Maps host port 5432 to the container's 5432.
+   - `TCP-LISTEN:5432,fork TCP:db:5432`: Forwards incoming connections to the `db` container on port 5432.
+   - If port 5432 is already in use on your host, change it (e.g., `-p 5433:5432` and connect pgAdmin to `localhost:5433`).
+
+3. **Connect with pgAdmin**:
+   - Host: `localhost` (or `127.0.0.1`)
+   - Port: `5432` (or whatever you mapped)
+   - Database: `xeodocs_db`
+   - Username: `user` 
+   - Password: `password` 
+
+4. **Verify the connection** (optional):
+   - Check the proxy is running: `docker ps` (look for the socat container).
+   - Test from host: `docker run --rm --network none postgres:15 psql -h localhost -p 5432 -U user -d xeodocs_db` (it should connect and show the DB prompt).
+
+5. **Clean up**: Stop the proxy with `docker stop <container_id>` (from `docker ps`), or just kill it—it'll self-remove.
+
+### Notes
+- **Security**: This exposes the port only while the proxy runs, so it's truly temporary. Use it in a secure environment or behind a firewall.
+- **Conflicts**: If your host already uses 5432 (e.g., local Postgres), pick a different port.
+- This works with your existing setup since the proxy joins the same network and resolves `db` via DNS.

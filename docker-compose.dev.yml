@@ -237,3 +237,7 @@ volumes:
   repos:
   kafka_data:
   influxdb_data:
+
+networks:
+  default:
+    name: xeodocs-internal-net
