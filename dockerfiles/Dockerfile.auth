@@ -9,8 +9,9 @@ COPY . .
 
 RUN go build -o service ./cmd/auth
 
-FROM gcr.io/distroless/static
+FROM alpine:latest
 
 COPY --from=builder /app/service /service
+COPY --from=builder /app/internal/shared/db /app/internal/shared/db
 
 CMD ["/service"]
