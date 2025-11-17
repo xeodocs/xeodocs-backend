@@ -1,0 +1,49 @@
+services:
+  db:
+    image: postgres:15
+    environment:
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: xeodocs_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U user -d xeodocs_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+  auth:
+    build:
+      context: .
+      dockerfile: dockerfiles/Dockerfile.auth
+    environment:
+      DATABASE_URL: postgres://user:password@db/xeodocs_db?sslmode=disable
+      PORT: 80
+      JWT_SECRET: your-secret-key
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - .:/app
+  gateway:
+    build:
+      context: .
+      dockerfile: dockerfiles/Dockerfile.gateway
+    ports:
+      - "12020:12020"
+    environment:
+      GATEWAY_PORT: 12020
+      AUTH_SERVICE_URL: http://auth:80
+    depends_on:
+      - auth
+    volumes:
+      - .:/app
+
+volumes:
+  db_data:
+
+networks:
+  default:
+    name: xeodocs-internal-net
