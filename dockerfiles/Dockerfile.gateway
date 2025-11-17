@@ -12,6 +12,7 @@ RUN go build -o service ./cmd/gateway
 FROM alpine:latest
 
 COPY --from=builder /app/service /service
-COPY --from=builder /app/internal/shared/db /app/internal/shared/db
+# This is required because this service uses goose for database migrations
+COPY --from=builder /app/internal/shared/db/migrations /app/internal/shared/db/migrations
 
 CMD ["/service"]
