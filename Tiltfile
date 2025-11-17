@@ -40,4 +40,24 @@ docker_build_with_restart(
 )
 
 k8s_yaml('k8s/dev/gateway.yaml')
-k8s_resource('gateway', port_forwards='12020:12020', resource_deps=['compile-gateway', 'auth'])
+k8s_resource('gateway', resource_deps=['compile-gateway', 'db'])
+
+# Project
+local_resource(
+  'compile-project',
+  'CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o build/service ./cmd/project',
+  deps=['cmd/project/', 'internal/project/', 'pkg/', 'go.mod', 'go.sum'],
+  ignore=['build/']
+)
+
+docker_build_with_restart(
+  'registry:12030/xeodocs-backend-project',
+  '.',
+  entrypoint=['/service'],
+  dockerfile='dockerfiles/Dockerfile.project',
+  live_update=[sync('./build', '/')]
+)
+
+k8s_yaml('k8s/dev/project.yaml')
+k8s_resource('project', resource_deps=['compile-project', 'db'])
+

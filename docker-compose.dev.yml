@@ -27,6 +27,20 @@ services:
         condition: service_healthy
     volumes:
       - .:/app
+
+  project:
+    build:
+      context: .
+      dockerfile: dockerfiles/Dockerfile.project
+    environment:
+      DATABASE_URL: postgres://user:password@db/xeodocs_db?sslmode=disable
+      PROJECT_PORT: 80
+      JWT_SECRET: your-secret-key
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - .:/app
   gateway:
     build:
       context: .
