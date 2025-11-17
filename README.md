@@ -16,10 +16,36 @@ XeoDocs automatically translates documentation from English to other languages u
 
 ## Setup
 
+### Option 1: Docker Compose (Legacy)
+
 1. Clone the repository
 2. Run `docker compose -f docker-compose.dev.yml up --build` for development
 3. For production, use `docker-compose.prod.yml`
 4. Stop the containers with `docker compose -f docker-compose.dev.yml down --volumes --rmi local`
+
+### Option 2: K3d + Tilt (Recommended for Development)
+
+1. Ensure Docker Desktop is running
+2. Install K3d and Tilt if not already installed:
+   ```bash
+   brew install k3d tilt
+   ```
+3. Create the K3d cluster:
+   ```bash
+   k3d cluster create xeodocs-dev --port 12020:12020@loadbalancer --port 8080:8080@loadbalancer --wait
+   ```
+4. Start Tilt:
+   ```bash
+   tilt up
+   ```
+5. Access the services via the forwarded ports (Tilt will provide URLs)
+6. To stop:
+   ```bash
+   tilt down
+   k3d cluster delete xeodocs-dev
+   ```
+
+This setup provides faster rebuilds and better development experience with live reloading.
 
 ## Services
 
