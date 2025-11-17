@@ -32,7 +32,7 @@ XeoDocs automatically translates documentation from English to other languages u
    ```
 3. Create the K3d cluster:
    ```bash
-   k3d cluster create xeodocs-dev --port 12020:12020@loadbalancer --port 8080:8080@loadbalancer --wait
+   k3d cluster create -c k3d-config.yaml
    ```
 4. Start Tilt:
    ```bash
@@ -42,7 +42,7 @@ XeoDocs automatically translates documentation from English to other languages u
 6. To stop:
    ```bash
    tilt down
-   k3d cluster delete xeodocs-dev
+   k3d cluster delete -c k3d-config.yaml
    ```
 
 This setup provides faster rebuilds and better development experience with live reloading.
