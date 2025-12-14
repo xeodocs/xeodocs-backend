@@ -12,7 +12,7 @@ Implementation:
 - If an endpoint returns a list of elements, in the case that no elements exist yet, always return an empty array `[]`, never return `null`.
 
 Code:
-- Always write the code in English, as well as the comments, even when the prompt is not in English.
+- Always write the code, comments and documentation in English, even when the prompt is not in English.
 
 Architecture:
 - This backend uses a Modular Monolith architecture strategy in Go.

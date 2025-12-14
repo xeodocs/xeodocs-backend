@@ -19,7 +19,7 @@ func Load() (*Config, error) {
 	_ = godotenv.Load() // Load .env file if it exists
 
 	return &Config{
-		Port:           getEnv("PORT", "8080"),
+		Port:           getEnv("PORT", "12020"),
 		DatabaseURL:    getEnv("DATABASE_URL", "postgres://user:password@localhost:5432/xeodocs?sslmode=disable"),
 		JWTSecret:      getEnv("JWT_SECRET", "secret-key"),
 		Environment:    getEnv("ENVIRONMENT", "development"),

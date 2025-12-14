@@ -37,7 +37,7 @@ This project follows a **Modular Monolith** architecture in Go. It is structured
 Create a `.env` file in the root directory (copy from `.env.example` if available, or use the reference below):
 
 ```bash
-PORT=8080
+PORT=12020
 DATABASE_URL=postgres://user:password@localhost:5432/xeodocs?sslmode=disable
 JWT_SECRET=your-super-secret-key-change-me
 ENVIRONMENT=development
