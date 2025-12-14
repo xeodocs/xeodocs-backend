@@ -24,6 +24,7 @@ func (h *Handler) RegisterRoutes(r chi.Router) {
 	r.Put("/users/{id}", h.UpdateUser)
 	r.Patch("/users/{id}", h.UpdateUser)
 	r.Post("/users", h.CreateUser)
+	r.Delete("/users/{id}", h.DeleteUser)
 }
 
 func (h *Handler) ListUsers(w http.ResponseWriter, r *http.Request) {
@@ -50,6 +51,19 @@ func (h *Handler) GetUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	response.JSON(w, http.StatusOK, map[string]interface{}{"data": user})
+}
+
+func (h *Handler) DeleteUser(w http.ResponseWriter, r *http.Request) {
+	id := chi.URLParam(r, "id")
+	if err := h.repo.Delete(id); err != nil {
+		if err == sql.ErrNoRows {
+			response.Error(w, http.StatusNotFound, "User not found", nil)
+			return
+		}
+		response.Error(w, http.StatusInternalServerError, err.Error(), nil)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
 }
 
 func (h *Handler) CreateUser(w http.ResponseWriter, r *http.Request) {
@@ -82,15 +96,26 @@ func (h *Handler) CreateUser(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) UpdateUser(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	var req struct {
-		Name  string `json:"name"`
-		Email string `json:"email"`
+		Name     string `json:"name"`
+		Email    string `json:"email"`
+		Password string `json:"password"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		response.Error(w, http.StatusBadRequest, "Invalid request body", nil)
 		return
 	}
 
-	user, err := h.repo.Update(id, req.Name, req.Email)
+	var passwordHash string
+	if req.Password != "" {
+		hashed, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
+		if err != nil {
+			response.Error(w, http.StatusInternalServerError, "Error hashing password", nil)
+			return
+		}
+		passwordHash = string(hashed)
+	}
+
+	user, err := h.repo.Update(id, req.Name, req.Email, passwordHash)
 	if err == sql.ErrNoRows {
 		response.Error(w, http.StatusNotFound, "User not found", nil)
 		return

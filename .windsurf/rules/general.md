@@ -10,6 +10,7 @@ Technologies:
 
 Implementation:
 - If an endpoint returns a list of elements, in the case that no elements exist yet, always return an empty array `[]`, never return `null`.
+- Whenever you need to configure the request to an API endpoint, refer to the OpenAPI description on the GitHub MCP Server.
 
 Code:
 - Always write the code, comments and documentation in English, even when the prompt is not in English.

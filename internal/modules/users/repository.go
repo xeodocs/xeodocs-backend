@@ -75,15 +75,27 @@ func (r *Repository) Create(name, email, passwordHash, apiKey string) (*User, er
 	return &u, nil
 }
 
-func (r *Repository) Update(id string, name, email string) (*User, error) {
+func (r *Repository) Update(id string, name, email, passwordHash string) (*User, error) {
 	var u User
 	var apiKey sql.NullString
-	err := r.db.QueryRow(`
-		UPDATE users
-		SET name = $1, email = $2, updated_at = NOW()
-		WHERE id = $3
-		RETURNING id, name, email, api_key, created_at, updated_at
-	`, name, email, id).Scan(&u.ID, &u.Name, &u.Email, &apiKey, &u.CreatedAt, &u.UpdatedAt)
+	var err error
+
+	if passwordHash != "" {
+		err = r.db.QueryRow(`
+			UPDATE users
+			SET name = $1, email = $2, password_hash = $3, updated_at = NOW()
+			WHERE id = $4
+			RETURNING id, name, email, api_key, created_at, updated_at
+		`, name, email, passwordHash, id).Scan(&u.ID, &u.Name, &u.Email, &apiKey, &u.CreatedAt, &u.UpdatedAt)
+	} else {
+		err = r.db.QueryRow(`
+			UPDATE users
+			SET name = $1, email = $2, updated_at = NOW()
+			WHERE id = $3
+			RETURNING id, name, email, api_key, created_at, updated_at
+		`, name, email, id).Scan(&u.ID, &u.Name, &u.Email, &apiKey, &u.CreatedAt, &u.UpdatedAt)
+	}
+
 	if err != nil {
 		return nil, err
 	}
@@ -91,4 +103,19 @@ func (r *Repository) Update(id string, name, email string) (*User, error) {
 		u.APIKey = apiKey.String
 	}
 	return &u, nil
+}
+
+func (r *Repository) Delete(id string) error {
+	result, err := r.db.Exec("DELETE FROM users WHERE id = $1", id)
+	if err != nil {
+		return err
+	}
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if rowsAffected == 0 {
+		return sql.ErrNoRows
+	}
+	return nil
 }
