@@ -6,6 +6,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
+	"github.com/go-chi/cors"
 	"github.com/xeodocs/xeodocs-backend/internal/modules/auth"
 	"github.com/xeodocs/xeodocs-backend/internal/modules/configurations"
 	"github.com/xeodocs/xeodocs-backend/internal/modules/files"
@@ -18,6 +19,7 @@ import (
 	"github.com/xeodocs/xeodocs-backend/internal/modules/workflow"
 	"github.com/xeodocs/xeodocs-backend/internal/shared/config"
 	"github.com/xeodocs/xeodocs-backend/internal/shared/database"
+	customMiddleware "github.com/xeodocs/xeodocs-backend/internal/shared/middleware"
 )
 
 func main() {
@@ -36,24 +38,20 @@ func main() {
 
 	// Initialize Router
 	r := chi.NewRouter()
-	r.Use(middleware.Logger)
+	r.Use(customMiddleware.RequestResponseLogger)
 	r.Use(middleware.Recoverer)
 	r.Use(middleware.URLFormat)
 	r.Use(middleware.AllowContentType("application/json"))
 
-	// CORS (Basic implementation, refine for production)
-	r.Use(func(next http.Handler) http.Handler {
-		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			w.Header().Set("Access-Control-Allow-Origin", "*")
-			w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, PATCH, OPTIONS")
-			w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization, X-API-Key")
-			if r.Method == "OPTIONS" {
-				w.WriteHeader(http.StatusOK)
-				return
-			}
-			next.ServeHTTP(w, r)
-		})
-	})
+	// CORS for localhost development
+	r.Use(cors.Handler(cors.Options{
+		AllowedOrigins:   []string{"https://localhost:*", "http://localhost:*"},
+		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"},
+		AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type", "X-CSRF-Token", "X-API-Key"},
+		ExposedHeaders:   []string{"Link"},
+		AllowCredentials: true,
+		MaxAge:           300, // Maximum value not ignored by any of major browsers
+	}))
 
 	// Mount V1 API
 	r.Route("/v1", func(r chi.Router) {
@@ -108,7 +106,7 @@ func main() {
 		})
 	})
 
-	log.Printf("Server starting on port %s", cfg.Port)
+	log.Printf("Server starting on port %s (with Custom Logger)", cfg.Port)
 	if err := http.ListenAndServe(":"+cfg.Port, r); err != nil {
 		log.Fatalf("Server failed: %v", err)
 	}

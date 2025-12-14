@@ -29,14 +29,19 @@ type User struct {
 
 func (s *Service) Authenticate(email, password string) (*User, string, error) {
 	var user User
+	var apiKey sql.NullString
 	err := s.db.QueryRow("SELECT id, name, email, password_hash, api_key FROM users WHERE email = $1", email).Scan(
-		&user.ID, &user.Name, &user.Email, &user.PasswordHash, &user.APIKey,
+		&user.ID, &user.Name, &user.Email, &user.PasswordHash, &apiKey,
 	)
 	if err == sql.ErrNoRows {
 		return nil, "", errors.New("invalid credentials")
 	}
 	if err != nil {
 		return nil, "", err
+	}
+
+	if apiKey.Valid {
+		user.APIKey = apiKey.String
 	}
 
 	if err := bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(password)); err != nil {

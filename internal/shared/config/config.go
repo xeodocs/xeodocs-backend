@@ -1,8 +1,8 @@
 package config
 
 import (
+	"fmt"
 	"os"
-	"strconv"
 
 	"github.com/joho/godotenv"
 )
@@ -18,27 +18,38 @@ type Config struct {
 func Load() (*Config, error) {
 	_ = godotenv.Load() // Load .env file if it exists
 
+	port, err := getRequiredEnv("PORT")
+	if err != nil {
+		return nil, err
+	}
+
+	databaseURL, err := getRequiredEnv("DATABASE_URL")
+	if err != nil {
+		return nil, err
+	}
+
+	jwtSecret, err := getRequiredEnv("JWT_SECRET")
+	if err != nil {
+		return nil, err
+	}
+
+	environment, err := getRequiredEnv("ENVIRONMENT")
+	if err != nil {
+		return nil, err
+	}
+
 	return &Config{
-		Port:           getEnv("PORT", "12020"),
-		DatabaseURL:    getEnv("DATABASE_URL", "postgres://user:password@localhost:5432/xeodocs?sslmode=disable"),
-		JWTSecret:      getEnv("JWT_SECRET", "secret-key"),
-		Environment:    getEnv("ENVIRONMENT", "development"),
+		Port:           port,
+		DatabaseURL:    databaseURL,
+		JWTSecret:      jwtSecret,
+		Environment:    environment,
 		AllowedOrigins: []string{"*"}, // TODO: Configure strictly for production
 	}, nil
 }
 
-func getEnv(key, fallback string) string {
-	if value, ok := os.LookupEnv(key); ok {
-		return value
+func getRequiredEnv(key string) (string, error) {
+	if value, ok := os.LookupEnv(key); ok && value != "" {
+		return value, nil
 	}
-	return fallback
-}
-
-func getEnvInt(key string, fallback int) int {
-	if value, ok := os.LookupEnv(key); ok {
-		if i, err := strconv.Atoi(value); err == nil {
-			return i
-		}
-	}
-	return fallback
+	return "", fmt.Errorf("missing required environment variable: %s", key)
 }

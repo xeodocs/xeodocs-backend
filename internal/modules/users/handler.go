@@ -21,6 +21,8 @@ func NewHandler(repo *Repository) *Handler {
 func (h *Handler) RegisterRoutes(r chi.Router) {
 	r.Get("/users", h.ListUsers)
 	r.Get("/users/{id}", h.GetUser)
+	r.Put("/users/{id}", h.UpdateUser)
+	r.Patch("/users/{id}", h.UpdateUser)
 	r.Post("/users", h.CreateUser)
 }
 
@@ -75,4 +77,28 @@ func (h *Handler) CreateUser(w http.ResponseWriter, r *http.Request) {
 	}
 
 	response.JSON(w, http.StatusCreated, map[string]interface{}{"data": user})
+}
+
+func (h *Handler) UpdateUser(w http.ResponseWriter, r *http.Request) {
+	id := chi.URLParam(r, "id")
+	var req struct {
+		Name  string `json:"name"`
+		Email string `json:"email"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		response.Error(w, http.StatusBadRequest, "Invalid request body", nil)
+		return
+	}
+
+	user, err := h.repo.Update(id, req.Name, req.Email)
+	if err == sql.ErrNoRows {
+		response.Error(w, http.StatusNotFound, "User not found", nil)
+		return
+	}
+	if err != nil {
+		response.Error(w, http.StatusInternalServerError, err.Error(), nil)
+		return
+	}
+
+	response.JSON(w, http.StatusOK, map[string]interface{}{"data": user})
 }
