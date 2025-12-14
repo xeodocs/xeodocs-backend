@@ -25,11 +25,23 @@ func NewRepository(db *sql.DB) *Repository {
 }
 
 func (r *Repository) GetAll(projectID string) ([]Language, error) {
-	query := `
-		SELECT id, project_id, code, name, domain, is_active, created_at, updated_at
-		FROM languages WHERE project_id = $1 ORDER BY code ASC
-	`
-	rows, err := r.db.Query(query, projectID)
+	var query string
+	var args []interface{}
+
+	if projectID != "" {
+		query = `
+			SELECT id, project_id, code, name, domain, is_active, created_at, updated_at
+			FROM languages WHERE project_id = $1 ORDER BY code ASC
+		`
+		args = append(args, projectID)
+	} else {
+		query = `
+			SELECT id, project_id, code, name, domain, is_active, created_at, updated_at
+			FROM languages ORDER BY code ASC
+		`
+	}
+
+	rows, err := r.db.Query(query, args...)
 	if err != nil {
 		return nil, err
 	}

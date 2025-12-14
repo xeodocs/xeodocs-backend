@@ -18,11 +18,29 @@ func NewHandler(repo *Repository) *Handler {
 }
 
 func (h *Handler) RegisterRoutes(r chi.Router) {
+	r.Get("/languages", h.ListAllLanguages)
+	r.Post("/languages", h.CreateLanguage)
+	r.Get("/languages/{languageId}", h.GetLanguage)
+	r.Patch("/languages/{languageId}", h.UpdateLanguage)
+	r.Delete("/languages/{languageId}", h.DeleteLanguage)
+
 	r.Get("/projects/{projectId}/languages", h.ListLanguages)
 	r.Post("/projects/{projectId}/languages", h.CreateLanguage)
 	r.Get("/projects/{projectId}/languages/{languageId}", h.GetLanguage)
 	r.Patch("/projects/{projectId}/languages/{languageId}", h.UpdateLanguage)
 	r.Delete("/projects/{projectId}/languages/{languageId}", h.DeleteLanguage)
+}
+
+func (h *Handler) ListAllLanguages(w http.ResponseWriter, r *http.Request) {
+	languages, err := h.repo.GetAll("")
+	if err != nil {
+		response.Error(w, http.StatusInternalServerError, err.Error(), nil)
+		return
+	}
+	if languages == nil {
+		languages = []Language{}
+	}
+	response.JSON(w, http.StatusOK, map[string]interface{}{"data": languages})
 }
 
 func (h *Handler) ListLanguages(w http.ResponseWriter, r *http.Request) {
@@ -53,10 +71,19 @@ func (h *Handler) GetLanguage(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) CreateLanguage(w http.ResponseWriter, r *http.Request) {
-	projectID := chi.URLParam(r, "projectId")
 	var l Language
 	if err := json.NewDecoder(r.Body).Decode(&l); err != nil {
 		response.Error(w, http.StatusBadRequest, "Invalid request body", nil)
+		return
+	}
+
+	// If projectId is in the URL, it takes precedence
+	if urlProjectID := chi.URLParam(r, "projectId"); urlProjectID != "" {
+		l.ProjectID = urlProjectID
+	}
+
+	if l.ProjectID == "" {
+		response.Error(w, http.StatusBadRequest, "Missing required field: projectId", nil)
 		return
 	}
 
@@ -65,7 +92,6 @@ func (h *Handler) CreateLanguage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	l.ProjectID = projectID
 	l.IsActive = true
 
 	if err := h.repo.Create(&l); err != nil {

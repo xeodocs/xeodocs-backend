@@ -2,6 +2,7 @@ package users
 
 import (
 	"database/sql"
+	"fmt"
 	"time"
 )
 
@@ -75,26 +76,32 @@ func (r *Repository) Create(name, email, passwordHash, apiKey string) (*User, er
 	return &u, nil
 }
 
-func (r *Repository) Update(id string, name, email, passwordHash string) (*User, error) {
+func (r *Repository) Update(id string, name, email, passwordHash, apiKeyHash string) (*User, error) {
 	var u User
 	var apiKey sql.NullString
-	var err error
+
+	query := "UPDATE users SET name = $1, email = $2, updated_at = NOW()"
+	args := []interface{}{name, email}
+	argID := 3
 
 	if passwordHash != "" {
-		err = r.db.QueryRow(`
-			UPDATE users
-			SET name = $1, email = $2, password_hash = $3, updated_at = NOW()
-			WHERE id = $4
-			RETURNING id, name, email, api_key, created_at, updated_at
-		`, name, email, passwordHash, id).Scan(&u.ID, &u.Name, &u.Email, &apiKey, &u.CreatedAt, &u.UpdatedAt)
-	} else {
-		err = r.db.QueryRow(`
-			UPDATE users
-			SET name = $1, email = $2, updated_at = NOW()
-			WHERE id = $3
-			RETURNING id, name, email, api_key, created_at, updated_at
-		`, name, email, id).Scan(&u.ID, &u.Name, &u.Email, &apiKey, &u.CreatedAt, &u.UpdatedAt)
+		query += ", password_hash = $" + string(rune(argID+'0')) // simplified for single digit, but let's be safe
+		// actually, let's use fmt.Sprintf or just append
+		query += fmt.Sprintf(", password_hash = $%d", argID)
+		args = append(args, passwordHash)
+		argID++
 	}
+
+	if apiKeyHash != "" {
+		query += fmt.Sprintf(", api_key = $%d", argID)
+		args = append(args, apiKeyHash)
+		argID++
+	}
+
+	query += fmt.Sprintf(" WHERE id = $%d RETURNING id, name, email, api_key, created_at, updated_at", argID)
+	args = append(args, id)
+
+	err := r.db.QueryRow(query, args...).Scan(&u.ID, &u.Name, &u.Email, &apiKey, &u.CreatedAt, &u.UpdatedAt)
 
 	if err != nil {
 		return nil, err

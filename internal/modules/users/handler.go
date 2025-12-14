@@ -99,6 +99,7 @@ func (h *Handler) UpdateUser(w http.ResponseWriter, r *http.Request) {
 		Name     string `json:"name"`
 		Email    string `json:"email"`
 		Password string `json:"password"`
+		APIKey   string `json:"apiKey"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		response.Error(w, http.StatusBadRequest, "Invalid request body", nil)
@@ -115,7 +116,17 @@ func (h *Handler) UpdateUser(w http.ResponseWriter, r *http.Request) {
 		passwordHash = string(hashed)
 	}
 
-	user, err := h.repo.Update(id, req.Name, req.Email, passwordHash)
+	var apiKeyHash string
+	if req.APIKey != "" {
+		hashed, err := bcrypt.GenerateFromPassword([]byte(req.APIKey), bcrypt.DefaultCost)
+		if err != nil {
+			response.Error(w, http.StatusInternalServerError, "Error hashing API key", nil)
+			return
+		}
+		apiKeyHash = string(hashed)
+	}
+
+	user, err := h.repo.Update(id, req.Name, req.Email, passwordHash, apiKeyHash)
 	if err == sql.ErrNoRows {
 		response.Error(w, http.StatusNotFound, "User not found", nil)
 		return
