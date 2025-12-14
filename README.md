@@ -99,7 +99,20 @@ ENVIRONMENT=development
    go run cmd/api/main.go
    ```
 
-3. **Build Binary**
+3. **Hot Reload (Development)**
+   For a better development experience with hot-reloading, use [Air](https://github.com/air-verse/air).
+
+   Install Air:
+   ```bash
+   go install github.com/air-verse/air@latest
+   ```
+
+   Run with Air:
+   ```bash
+   air
+   ```
+
+4. **Build Binary**
    ```bash
    go build -o bin/api ./cmd/api
    ```

@@ -28,3 +28,6 @@
 # System
 .DS_Store
 Thumbs.db
+
+# Air
+tmp/

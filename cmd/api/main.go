@@ -38,7 +38,7 @@ func main() {
 
 	// Initialize Router
 	r := chi.NewRouter()
-	r.Use(customMiddleware.RequestResponseLogger)
+	r.Use(customMiddleware.RequestResponseLogger(cfg))
 	r.Use(middleware.Recoverer)
 	r.Use(middleware.URLFormat)
 	r.Use(middleware.AllowContentType("application/json"))

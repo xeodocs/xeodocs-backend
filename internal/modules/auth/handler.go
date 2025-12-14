@@ -28,6 +28,7 @@ func NewHandler(service *Service, cfg *config.Config) *Handler {
 
 func (h *Handler) RegisterRoutes(r chi.Router) {
 	r.Post("/auth/login", h.Login)
+	r.Post("/auth/logout", h.Logout)
 }
 
 func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
@@ -84,6 +85,42 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 			"user":    user,
 		},
 	})
+}
+
+func (h *Handler) Logout(w http.ResponseWriter, r *http.Request) {
+	// Determine cookie configuration based on environment
+	var domain string
+	var secure bool
+	var sameSite http.SameSite
+
+	switch h.cfg.Environment {
+	case "production":
+		domain = "admin.xeodocs.com"
+		secure = true
+		sameSite = http.SameSiteLaxMode
+	case "staging":
+		domain = "staging-admin.xeodocs.com"
+		secure = true
+		sameSite = http.SameSiteLaxMode
+	default: // development
+		domain = "" // Host-only cookie for local development
+		secure = false
+		sameSite = http.SameSiteLaxMode
+	}
+
+	// Clear cookie
+	http.SetCookie(w, &http.Cookie{
+		Name:     "session_id",
+		Value:    "",
+		HttpOnly: true,
+		Secure:   secure,
+		SameSite: sameSite,
+		Domain:   domain,
+		Path:     "/",
+		MaxAge:   -1,
+	})
+
+	response.JSON(w, http.StatusOK, map[string]string{"message": "Logged out successfully"})
 }
 
 // Middleware
