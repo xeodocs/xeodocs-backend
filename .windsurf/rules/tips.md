@@ -2,7 +2,16 @@
 trigger: always_on
 ---
 
-- Don't install Go web frameworks, always use the native Go http package
+Technologies:
+- About Go web frameworks, always only use `net/http` + `chi`
 - Don't use ORM (Gorm)
-- Do not compile directly; the code is tested using Docker Compose
-- Always log important activity using the Logging Service
+- The GitHub repository for this backend service is "github.com/xeodocs/xeodocs-backend"
+
+Implementation:
+- If an endpoint returns a list of elements, in the case that no elements exist yet, always return an empty array `[]`, never return `null`
+
+Code:
+- Always write the code in English, as well as the comments, even when the prompt is not in English.
+
+Architecture:
+- This backend uses a Modular Monolith architecture strategy in Go.
