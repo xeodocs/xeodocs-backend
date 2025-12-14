@@ -13,6 +13,10 @@ import (
 	"github.com/xeodocs/xeodocs-backend/internal/shared/response"
 )
 
+type contextKey string
+
+const userIDKey contextKey = "userID"
+
 type Handler struct {
 	service *Service
 	cfg     *config.Config
@@ -42,12 +46,34 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Determine cookie configuration based on environment
+	var domain string
+	var secure bool
+	var sameSite http.SameSite
+
+	switch h.cfg.Environment {
+	case "production":
+		domain = "admin.xeodocs.com"
+		secure = true
+		sameSite = http.SameSiteLaxMode
+	case "staging":
+		domain = "staging-admin.xeodocs.com"
+		secure = true
+		sameSite = http.SameSiteLaxMode
+	default: // development
+		domain = "" // Host-only cookie for local development
+		secure = false
+		sameSite = http.SameSiteLaxMode
+	}
+
 	// Set cookie
 	http.SetCookie(w, &http.Cookie{
 		Name:     "session_id",
 		Value:    token,
 		HttpOnly: true,
-		Secure:   h.cfg.Environment == "production",
+		Secure:   secure,
+		SameSite: sameSite,
+		Domain:   domain,
 		Path:     "/",
 		MaxAge:   86400, // 24 hours
 	})
@@ -92,7 +118,7 @@ func (h *Handler) AuthMiddleware(next http.Handler) http.Handler {
 					response.Error(w, http.StatusUnauthorized, "Invalid API Key", nil)
 					return
 				}
-				ctx := context.WithValue(r.Context(), "userID", user.ID)
+				ctx := context.WithValue(r.Context(), userIDKey, user.ID)
 				next.ServeHTTP(w, r.WithContext(ctx))
 				return
 			}
@@ -122,7 +148,7 @@ func (h *Handler) AuthMiddleware(next http.Handler) http.Handler {
 				response.Error(w, http.StatusUnauthorized, "Invalid token claims", nil)
 				return
 			}
-			ctx := context.WithValue(r.Context(), "userID", userID)
+			ctx := context.WithValue(r.Context(), userIDKey, userID)
 			next.ServeHTTP(w, r.WithContext(ctx))
 		} else {
 			response.Error(w, http.StatusUnauthorized, "Invalid token claims", nil)

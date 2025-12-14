@@ -43,9 +43,19 @@ func main() {
 	r.Use(middleware.URLFormat)
 	r.Use(middleware.AllowContentType("application/json"))
 
-	// CORS for localhost development
+	// CORS configuration based on environment
+	var allowedOrigins []string
+	switch cfg.Environment {
+	case "production":
+		allowedOrigins = []string{"https://admin.xeodocs.com"}
+	case "staging":
+		allowedOrigins = []string{"https://staging-admin.xeodocs.com"}
+	default: // development
+		allowedOrigins = []string{"http://dev-admin.xeodocs.localhost:*"}
+	}
+
 	r.Use(cors.Handler(cors.Options{
-		AllowedOrigins:   []string{"https://localhost:*", "http://localhost:*"},
+		AllowedOrigins:   allowedOrigins,
 		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"},
 		AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type", "X-CSRF-Token", "X-API-Key"},
 		ExposedHeaders:   []string{"Link"},
@@ -106,7 +116,7 @@ func main() {
 		})
 	})
 
-	log.Printf("Server starting on port %s (with Custom Logger)", cfg.Port)
+	log.Printf("Server starting on port %s (with Custom Logger). Env: %s", cfg.Port, cfg.Environment)
 	if err := http.ListenAndServe(":"+cfg.Port, r); err != nil {
 		log.Fatalf("Server failed: %v", err)
 	}
