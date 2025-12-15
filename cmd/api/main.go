@@ -98,6 +98,10 @@ func main() {
 
 		systemHandler := system.NewHandler()
 
+		// Start Background Workers
+		syncWorker := projects.NewSyncWorker(projectsRepo, configRepo, ghService)
+		syncWorker.Start()
+
 		// Public Routes
 		r.Group(func(r chi.Router) {
 			systemHandler.RegisterRoutes(r)
