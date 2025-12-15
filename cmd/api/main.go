@@ -19,6 +19,7 @@ import (
 	"github.com/xeodocs/xeodocs-backend/internal/modules/workflow"
 	"github.com/xeodocs/xeodocs-backend/internal/shared/config"
 	"github.com/xeodocs/xeodocs-backend/internal/shared/database"
+	gh "github.com/xeodocs/xeodocs-backend/internal/shared/github"
 	customMiddleware "github.com/xeodocs/xeodocs-backend/internal/shared/middleware"
 )
 
@@ -66,6 +67,8 @@ func main() {
 	// Mount V1 API
 	r.Route("/v1", func(r chi.Router) {
 		// Initialize Modules
+		ghService := gh.NewService(cfg.GitHubToken, cfg.GitHubOwner)
+
 		authService := auth.NewService(db, cfg)
 		authHandler := auth.NewHandler(authService, cfg)
 
@@ -73,7 +76,7 @@ func main() {
 		usersHandler := users.NewHandler(usersRepo)
 
 		projectsRepo := projects.NewRepository(db)
-		projectsHandler := projects.NewHandler(projectsRepo)
+		projectsHandler := projects.NewHandler(projectsRepo, ghService)
 
 		languagesRepo := languages.NewRepository(db)
 		languagesHandler := languages.NewHandler(languagesRepo)

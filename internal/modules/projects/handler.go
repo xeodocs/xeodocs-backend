@@ -6,15 +6,20 @@ import (
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
+	gh "github.com/xeodocs/xeodocs-backend/internal/shared/github"
 	"github.com/xeodocs/xeodocs-backend/internal/shared/response"
 )
 
 type Handler struct {
-	repo *Repository
+	repo      *Repository
+	ghService *gh.Service
 }
 
-func NewHandler(repo *Repository) *Handler {
-	return &Handler{repo: repo}
+func NewHandler(repo *Repository, ghService *gh.Service) *Handler {
+	return &Handler{
+		repo:      repo,
+		ghService: ghService,
+	}
 }
 
 func (h *Handler) RegisterRoutes(r chi.Router) {
@@ -68,11 +73,55 @@ func (h *Handler) CreateProject(w http.ResponseWriter, r *http.Request) {
 	}
 	p.IsActive = true
 
+	// Ensure Fork Exists
+	forkURL, err := h.ghService.EnsureForkExists(p.SourceRepoURL, p.Slug)
+	if err != nil {
+		// We fail the creation if we cannot fork, as per requirements
+		response.Error(w, http.StatusInternalServerError, "Failed to create/verify GitHub fork: "+err.Error(), nil)
+		return
+	}
+	// Note: We might want to store the fork URL? The requirement says "create a fork", not necessarily replace SourceRepoURL.
+	// But usually, we want to know where the fork is.
+	// However, the `Project` struct has `SourceRepoURL`.
+	// If the intention is that the project manages the FORK, maybe we should update SourceRepoURL to the fork URL?
+	// Or maybe we need a new field `ForkRepoURL`?
+	// The prompt says: "connect with the GitHub account of XeoDocs and create a fork... the fork must have the name of the project slug."
+	// It doesn't explicitly say to update the DB record to point to the fork, but it is implied that this project IS about that fork.
+	// Assuming for now we just ensure it exists.
+	// BUT, if we are editing, we verify the fork exists.
+	// Let's Log or just return success.
+	// Wait, if the user provides a SourceRepoURL, that is the UPSTREAM.
+	// We should probably store the Fork URL somewhere or assume it based on Owner+Slug.
+	// Since I don't have permission to change the DB schema right now (or I do, but it wasn't asked explicitly),
+	// I will just perform the action.
+	// Actually, maybe I should return the fork URL in the response or something?
+	// Let's just proceed with creation.
+
+	// OPTIONAL: Update p.SourceRepoURL to be the fork?
+	// "Al crearse un nuevo Proyecto... crear un fork... Al editarse... verificar que el fork exista"
+	// It seems the system works WITH the fork.
+	// Let's assume we don't change the SourceRepoURL because that tracks the upstream?
+	// Or maybe SourceRepoURL IS the fork?
+	// If the user inputs `github.com/original/repo`, and we fork it to `github.com/xeodocs/my-project`.
+	// If we overwrite SourceRepoURL, we lose the upstream info.
+	// The `Project` struct has `SourceRepoURL`.
+	// For now, I will NOT modify `p.SourceRepoURL`. I will just ensure the fork exists.
+	// The requirement is just "create a fork".
+
 	if err := h.repo.Create(&p); err != nil {
 		response.Error(w, http.StatusInternalServerError, err.Error(), nil)
 		return
 	}
-	response.JSON(w, http.StatusCreated, map[string]interface{}{"data": p})
+
+	// Add fork info to response?
+	respData := map[string]interface{}{
+		"data": p,
+		"meta": map[string]string{
+			"forkUrl": forkURL,
+		},
+	}
+
+	response.JSON(w, http.StatusCreated, respData)
 }
 
 func (h *Handler) UpdateProject(w http.ResponseWriter, r *http.Request) {
@@ -140,11 +189,26 @@ func (h *Handler) UpdateProject(w http.ResponseWriter, r *http.Request) {
 	existing.Description = nonEmpty(p.Description, existing.Description)
 	existing.IsActive = p.IsActive // This is tricky if not sent. But let's assume it is part of the payload if changed.
 
+	// Ensure Fork Exists (even on edit)
+	// Use the UPDATED existing.SourceRepoURL and existing.Slug
+	forkURL, err := h.ghService.EnsureForkExists(existing.SourceRepoURL, existing.Slug)
+	if err != nil {
+		response.Error(w, http.StatusInternalServerError, "Failed to verify/create GitHub fork: "+err.Error(), nil)
+		return
+	}
+
 	if err := h.repo.Update(id, existing); err != nil {
 		response.Error(w, http.StatusInternalServerError, err.Error(), nil)
 		return
 	}
-	response.JSON(w, http.StatusOK, map[string]interface{}{"data": existing})
+
+	respData := map[string]interface{}{
+		"data": existing,
+		"meta": map[string]string{
+			"forkUrl": forkURL,
+		},
+	}
+	response.JSON(w, http.StatusOK, respData)
 }
 
 func nonEmpty(newVal, oldVal string) string {

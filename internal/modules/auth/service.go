@@ -66,12 +66,27 @@ func (s *Service) generateToken(userID string) (string, error) {
 }
 
 func (s *Service) ValidateAPIKey(apiKey string) (*User, error) {
-	var user User
-	err := s.db.QueryRow("SELECT id, name, email, password_hash, api_key FROM users WHERE api_key = $1", apiKey).Scan(
-		&user.ID, &user.Name, &user.Email, &user.PasswordHash, &user.APIKey,
-	)
+	// Since API keys are hashed, we can't query directly.
+	// We need to fetch all users with an API key and compare.
+	// TODO: Optimization - Store a key ID or prefix to lookup efficiently.
+	rows, err := s.db.Query("SELECT id, name, email, password_hash, api_key FROM users WHERE api_key IS NOT NULL AND api_key != ''")
 	if err != nil {
 		return nil, err
 	}
-	return &user, nil
+	defer rows.Close()
+
+	for rows.Next() {
+		var user User
+		var apiKeyHash string
+		if err := rows.Scan(&user.ID, &user.Name, &user.Email, &user.PasswordHash, &apiKeyHash); err != nil {
+			continue
+		}
+		user.APIKey = apiKeyHash
+
+		if err := bcrypt.CompareHashAndPassword([]byte(apiKeyHash), []byte(apiKey)); err == nil {
+			return &user, nil
+		}
+	}
+
+	return nil, errors.New("invalid api key")
 }

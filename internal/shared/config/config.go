@@ -13,6 +13,8 @@ type Config struct {
 	JWTSecret      string
 	Environment    string
 	AllowedOrigins []string
+	GitHubToken    string
+	GitHubOwner    string // The account (user or org) where forks will be created
 }
 
 func Load() (*Config, error) {
@@ -38,12 +40,24 @@ func Load() (*Config, error) {
 		return nil, err
 	}
 
+	githubToken, err := getRequiredEnv("GITHUB_TOKEN")
+	if err != nil {
+		return nil, err
+	}
+
+	githubOwner, err := getRequiredEnv("GITHUB_OWNER")
+	if err != nil {
+		return nil, err
+	}
+
 	return &Config{
 		Port:           port,
 		DatabaseURL:    databaseURL,
 		JWTSecret:      jwtSecret,
 		Environment:    environment,
 		AllowedOrigins: []string{"*"}, // TODO: Configure strictly for production
+		GitHubToken:    githubToken,
+		GitHubOwner:    githubOwner,
 	}, nil
 }
 
