@@ -76,10 +76,10 @@ func main() {
 		usersHandler := users.NewHandler(usersRepo)
 
 		projectsRepo := projects.NewRepository(db)
-		projectsHandler := projects.NewHandler(projectsRepo, ghService)
+		projectsHandler := projects.NewHandler(projectsRepo, ghService, cfg)
 
 		languagesRepo := languages.NewRepository(db)
-		languagesHandler := languages.NewHandler(languagesRepo)
+		languagesHandler := languages.NewHandler(languagesRepo, projectsRepo, ghService, cfg)
 
 		filesRepo := files.NewRepository(db)
 		filesHandler := files.NewHandler(filesRepo)
@@ -99,7 +99,7 @@ func main() {
 		systemHandler := system.NewHandler()
 
 		// Start Background Workers
-		syncWorker := projects.NewSyncWorker(projectsRepo, configRepo, ghService)
+		syncWorker := projects.NewSyncWorker(projectsRepo, configRepo, ghService, cfg)
 		syncWorker.Start()
 
 		// Public Routes

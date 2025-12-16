@@ -6,15 +6,26 @@ import (
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/xeodocs/xeodocs-backend/internal/modules/projects"
+	"github.com/xeodocs/xeodocs-backend/internal/shared/config"
+	gh "github.com/xeodocs/xeodocs-backend/internal/shared/github"
 	"github.com/xeodocs/xeodocs-backend/internal/shared/response"
 )
 
 type Handler struct {
-	repo *Repository
+	repo         *Repository
+	projectsRepo *projects.Repository
+	ghService    *gh.Service
+	config       *config.Config
 }
 
-func NewHandler(repo *Repository) *Handler {
-	return &Handler{repo: repo}
+func NewHandler(repo *Repository, projectsRepo *projects.Repository, ghService *gh.Service, cfg *config.Config) *Handler {
+	return &Handler{
+		repo:         repo,
+		projectsRepo: projectsRepo,
+		ghService:    ghService,
+		config:       cfg,
+	}
 }
 
 func (h *Handler) RegisterRoutes(r chi.Router) {
@@ -94,6 +105,33 @@ func (h *Handler) CreateLanguage(w http.ResponseWriter, r *http.Request) {
 
 	l.IsActive = true
 
+	// Ensure branches exist in the fork
+	// 1. Get Project to find slug and source branch
+	project, err := h.projectsRepo.GetByID(l.ProjectID)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			response.Error(w, http.StatusNotFound, "Project not found", nil)
+			return
+		}
+		response.Error(w, http.StatusInternalServerError, "Failed to fetch project: "+err.Error(), nil)
+		return
+	}
+
+	// 2. Determine fork name
+	forkName := h.getForkName(project.Slug)
+
+	// 3. Ensure [code] branch exists (based on source branch)
+	if err := h.ghService.EnsureBranchExists(forkName, l.Code, project.SourceBranch); err != nil {
+		response.Error(w, http.StatusInternalServerError, "Failed to create language branch: "+err.Error(), nil)
+		return
+	}
+
+	// 4. Ensure local-[code] branch exists (based on source branch)
+	if err := h.ghService.EnsureBranchExists(forkName, "local-"+l.Code, project.SourceBranch); err != nil {
+		response.Error(w, http.StatusInternalServerError, "Failed to create local language branch: "+err.Error(), nil)
+		return
+	}
+
 	if err := h.repo.Create(&l); err != nil {
 		response.Error(w, http.StatusInternalServerError, err.Error(), nil)
 		return
@@ -131,11 +169,46 @@ func (h *Handler) UpdateLanguage(w http.ResponseWriter, r *http.Request) {
 	}
 	existing.IsActive = l.IsActive
 
+	// Ensure branches exist (in case they didn't, or code changed)
+	// Even if code changed, we create new branches for the new code.
+	// We don't delete old ones automatically.
+
+	// 1. Get Project
+	project, err := h.projectsRepo.GetByID(existing.ProjectID)
+	if err != nil {
+		response.Error(w, http.StatusInternalServerError, "Failed to fetch project: "+err.Error(), nil)
+		return
+	}
+
+	// 2. Fork Name
+	forkName := h.getForkName(project.Slug)
+
+	// 3. Ensure branches
+	if err := h.ghService.EnsureBranchExists(forkName, existing.Code, project.SourceBranch); err != nil {
+		response.Error(w, http.StatusInternalServerError, "Failed to verify/create language branch: "+err.Error(), nil)
+		return
+	}
+	if err := h.ghService.EnsureBranchExists(forkName, "local-"+existing.Code, project.SourceBranch); err != nil {
+		response.Error(w, http.StatusInternalServerError, "Failed to verify/create local language branch: "+err.Error(), nil)
+		return
+	}
+
 	if err := h.repo.Update(id, existing); err != nil {
 		response.Error(w, http.StatusInternalServerError, err.Error(), nil)
 		return
 	}
 	response.JSON(w, http.StatusOK, map[string]interface{}{"data": existing})
+}
+
+func (h *Handler) getForkName(slug string) string {
+	switch h.config.Environment {
+	case "development":
+		return "development-" + slug
+	case "staging":
+		return "staging-" + slug
+	default: // production
+		return slug
+	}
 }
 
 func (h *Handler) DeleteLanguage(w http.ResponseWriter, r *http.Request) {

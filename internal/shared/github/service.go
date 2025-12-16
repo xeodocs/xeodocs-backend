@@ -290,6 +290,98 @@ func (s *Service) SyncFork(forkName, branch string) error {
 	return fmt.Errorf("failed to sync fork, status: %d", resp.StatusCode)
 }
 
+// EnsureBranchExists verifies if a branch exists in the specified repo.
+// If it does not exist, it creates it from the baseBranch.
+// repoName is the name of the repository (e.g. fork name).
+func (s *Service) EnsureBranchExists(repoName, targetBranch, baseBranch string) error {
+	exists, err := s.checkBranchExists(repoName, targetBranch)
+	if err != nil {
+		return fmt.Errorf("failed to check branch existence: %w", err)
+	}
+	if exists {
+		return nil
+	}
+
+	// Need the SHA of the base branch to create the new one
+	baseSha, err := s.GetLatestCommit(fmt.Sprintf("https://github.com/%s/%s", s.owner, repoName), baseBranch)
+	if err != nil {
+		return fmt.Errorf("failed to get base branch sha: %w", err)
+	}
+
+	if err := s.createBranch(repoName, targetBranch, baseSha); err != nil {
+		return fmt.Errorf("failed to create branch %s: %w", targetBranch, err)
+	}
+
+	return nil
+}
+
+func (s *Service) checkBranchExists(repoName, branch string) (bool, error) {
+	// GET /repos/{owner}/{repo}/branches/{branch}
+	url := fmt.Sprintf("https://api.github.com/repos/%s/%s/branches/%s", s.owner, repoName, branch)
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		return false, err
+	}
+
+	s.addHeaders(req)
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return false, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode == http.StatusOK {
+		return true, nil
+	}
+	if resp.StatusCode == http.StatusNotFound {
+		return false, nil
+	}
+
+	return false, fmt.Errorf("unexpected status checking branch: %d", resp.StatusCode)
+}
+
+func (s *Service) createBranch(repoName, branch, sha string) error {
+	// POST /repos/{owner}/{repo}/git/refs
+	url := fmt.Sprintf("https://api.github.com/repos/%s/%s/git/refs", s.owner, repoName)
+
+	body := map[string]string{
+		"ref": fmt.Sprintf("refs/heads/%s", branch),
+		"sha": sha,
+	}
+
+	jsonBody, err := json.Marshal(body)
+	if err != nil {
+		return err
+	}
+
+	req, err := http.NewRequest("POST", url, bytes.NewBuffer(jsonBody))
+	if err != nil {
+		return err
+	}
+
+	s.addHeaders(req)
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode == http.StatusCreated || resp.StatusCode == http.StatusOK {
+		return nil
+	}
+
+	var errResp map[string]interface{}
+	if err := json.NewDecoder(resp.Body).Decode(&errResp); err == nil {
+		if msg, ok := errResp["message"].(string); ok {
+			return fmt.Errorf("api error: %s", msg)
+		}
+	}
+
+	return fmt.Errorf("unexpected status creating branch: %d", resp.StatusCode)
+}
+
 func (s *Service) addHeaders(req *http.Request) {
 	req.Header.Set("Authorization", "Bearer "+s.token)
 	req.Header.Set("Accept", "application/vnd.github+json")

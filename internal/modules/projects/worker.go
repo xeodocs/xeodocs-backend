@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/xeodocs/xeodocs-backend/internal/modules/configurations"
+	"github.com/xeodocs/xeodocs-backend/internal/shared/config"
 	"github.com/xeodocs/xeodocs-backend/internal/shared/github"
 )
 
@@ -12,34 +13,35 @@ type SyncWorker struct {
 	projectsRepo *Repository
 	configRepo   *configurations.Repository
 	ghService    *github.Service
+	config       *config.Config
 }
 
-func NewSyncWorker(pRepo *Repository, cRepo *configurations.Repository, gh *github.Service) *SyncWorker {
+func NewSyncWorker(pRepo *Repository, cRepo *configurations.Repository, gh *github.Service, cfg *config.Config) *SyncWorker {
 	return &SyncWorker{
 		projectsRepo: pRepo,
 		configRepo:   cRepo,
 		ghService:    gh,
+		config:       cfg,
 	}
 }
 
 func (w *SyncWorker) Start() {
 	go func() {
 		log.Println("Starting Project Sync Worker...")
-		// Initial run
-		w.runSync()
 
-		// Then run periodically
-		// We use a fixed ticker for the loop, but check the configured interval inside to decide if we should run logic?
-		// Or we re-adjust the ticker?
-		// Simplest is to run loop frequently (e.g. every hour) and check if enough time has passed for each project.
-		// However, the requirement says "configuration of the interval ... default 1 day".
-		// This likely refers to "how often we check a specific project".
-
-		ticker := time.NewTicker(1 * time.Hour)
-		defer ticker.Stop()
-
-		for range ticker.C {
+		for {
 			w.runSync()
+
+			// Get wake interval configuration
+			wakeInterval := 1 * time.Hour // Default
+			configItem, err := w.configRepo.GetByKey("worker_wake_interval")
+			if err == nil && configItem != nil {
+				if d, err := time.ParseDuration(configItem.Value); err == nil {
+					wakeInterval = d
+				}
+			}
+
+			time.Sleep(wakeInterval)
 		}
 	}()
 }
@@ -93,12 +95,26 @@ func (w *SyncWorker) syncProject(p *Project) error {
 	log.Printf("New commit found for project %s: %s (old: %s). Syncing fork...", p.Slug, latestCommit, p.LastCommitHash)
 
 	// 3. Sync Fork
-	// We fork to `GITHUB_OWNER/p.Slug`.
+	// Determine fork name based on environment
+	forkName := w.getForkName(p.Slug)
+
+	// We fork to `GITHUB_OWNER/forkName`.
 	// The SyncFork method expects the fork name (slug) and branch.
-	if err := w.ghService.SyncFork(p.Slug, p.SourceBranch); err != nil {
+	if err := w.ghService.SyncFork(forkName, p.SourceBranch); err != nil {
 		return err
 	}
 
 	// 4. Update DB
 	return w.projectsRepo.UpdateSyncStatus(p.ID, time.Now(), latestCommit)
+}
+
+func (w *SyncWorker) getForkName(slug string) string {
+	switch w.config.Environment {
+	case "development":
+		return "development-" + slug
+	case "staging":
+		return "staging-" + slug
+	default: // production
+		return slug
+	}
 }
